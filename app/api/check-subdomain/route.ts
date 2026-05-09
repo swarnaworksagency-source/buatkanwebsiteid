@@ -82,13 +82,20 @@ export async function GET(request: Request) {
             }
         )
 
-        const { data: existing } = await supabase
+        const { error, count } = await supabase
             .from('websites')
-            .select('id')
+            .select('subdomain', { count: 'exact' })
             .eq('subdomain', subdomain)
-            .maybeSingle()
 
-        if (existing) {
+        console.log('checking subdomain:', subdomain)
+        console.log('result count:', count)
+        console.log('error:', error)
+
+        if (error) {
+            throw error;
+        }
+
+        if (count !== null && count > 0) {
             return NextResponse.json(
                 { available: false, message: 'Subdomain ini sudah digunakan.' }
             )

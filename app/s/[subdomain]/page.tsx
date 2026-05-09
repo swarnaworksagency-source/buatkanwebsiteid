@@ -1,5 +1,10 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createClient } from '@supabase/supabase-js'
 import TemplateSatu from '@/components/templates/TemplateSatu'
+
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
@@ -9,8 +14,6 @@ interface SubdomainPageProps {
 
 export default async function SubdomainPage({ params }: SubdomainPageProps) {
     const { subdomain } = await params
-    const supabase = await createServerSupabaseClient()
-
     const { data: website } = await supabase
         .from('websites')
         .select('*')
@@ -49,8 +52,6 @@ export default async function SubdomainPage({ params }: SubdomainPageProps) {
 // Generate dynamic metadata for SEO
 export async function generateMetadata({ params }: SubdomainPageProps): Promise<Metadata> {
     const { subdomain } = await params
-    const supabase = await createServerSupabaseClient()
-
     const { data: website } = await supabase
         .from('websites')
         .select('generated_content, nama_usaha')
