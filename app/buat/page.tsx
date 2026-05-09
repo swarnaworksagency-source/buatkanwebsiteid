@@ -9,28 +9,30 @@ import { SearchableCombobox } from "@/components/ui/SearchableCombobox";
 import { AutocompleteInput } from "@/components/ui/AutocompleteInput";
 import { MultiSelectDropdown } from "@/components/ui/MultiSelectDropdown";
 import {
-  Monitor, Smartphone, Loader2, Globe,
+  Monitor, Smartphone, Loader2, Globe, Pencil,
   ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Eye, PenLine,
   Building2, Phone, AlignLeft, Award, MapPin, Target, Palette,
   Upload, ImagePlus, ExternalLink, Sun, Moon, Check, X, Pipette,
   Plus, Trash2, DollarSign, Camera, ChevronUp, ChevronDown, Star,
-  Mail, AtSign, Hash, Type,
+  Mail, AtSign, Hash, Type, Rocket, CheckCircle2, AlertCircle
 } from "lucide-react";
 
 /* ═══ CONSTANTS ═══ */
-const KATEGORI_SUGGESTIONS = [
-  "Servis AC", "Fotografer & Videografer", "Katering", "Bengkel Mobil & Motor",
-  "Klinik Kesehatan", "Konsultan Keuangan", "Jasa Pembersihan", "Agensi Kreatif",
-];
-const LAYANAN_OPTIONS = [
-  "Servis AC", "Servis Elektronik", "Cuci Motor/Mobil", "Laundry", "Salon & Barbershop", 
-  "Fotografi", "Videografi", "Desain Grafis", "Catering", "Cleaning Service", 
-  "Jasa Antar", "Perbaikan Rumah", "Les Privat", "Konsultasi", "Lainnya"
-];
 const USIA_OPTIONS = ["17-25 tahun", "26-35 tahun", "36-45 tahun", "46-55 tahun", "55+ tahun"];
 const STATUS_OPTIONS = ["Lajang", "Menikah", "Menikah dengan anak", "Orang tua tunggal", "Lansia"];
 const PEKERJAAN_OPTIONS = ["Pelajar/Mahasiswa", "Karyawan Swasta", "PNS", "Wirausaha", "Ibu Rumah Tangga", "Freelancer", "Profesional (Dokter/Lawyer/dll)"];
-const GAYA_HIDUP_OPTIONS = ["Hemat & Praktis", "Peduli Kualitas", "Aktif & Mobile", "Keluarga & Rumahan", "Sosial & Trendy", "Religius", "Peduli Lingkungan"];
+const GAYA_HIDUP_OPTIONS = [
+  "Suka yang Praktis & Hemat Waktu",
+  "Mementingkan Kualitas & Ketahanan",
+  "Aktif di Media Sosial",
+  "Ibu Rumah Tangga & Keluarga",
+  "Pekerja Sibuk & Profesional",
+  "Anak Muda & Mahasiswa",
+  "Religius & Islami",
+  "Peduli Penampilan & Gaya",
+  "Suka Belanja Online",
+  "Warga Lokal Setia"
+];
 const STEP_INFO = [
   { label: "Profil Dasar", icon: Building2 },
   { label: "Detail Bisnis", icon: Target },
@@ -56,13 +58,21 @@ function BuatContent() {
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM);
   const [templateData, setTemplateData] = useState<TemplateData | null>(null);
+  const [originalContent, setOriginalContent] = useState<any>(null);
   const [generatedWebsiteId, setGeneratedWebsiteId] = useState<string | null>(null);
   const [showBackDialog, setShowBackDialog] = useState(false);
-  
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Save Prompt State
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [saveActionType, setSaveActionType] = useState<"generate" | "update" | null>(null);
   const [projectName, setProjectName] = useState("");
+
+  // Deploy State
+  const [showDeployModal, setShowDeployModal] = useState(false);
+  const [deploySubdomain, setDeploySubdomain] = useState("");
+  const [deployStatus, setDeployStatus] = useState<"idle" | "checking" | "available" | "unavailable" | "deploying" | "success" | "error">("idle");
+  const [deployError, setDeployError] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
@@ -73,6 +83,122 @@ function BuatContent() {
   const fotoBisnisInputRef = useRef<HTMLInputElement>(null);
   const portofolioInputRef = useRef<HTMLInputElement>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  // File objects store — keeps actual File references for reliable upload
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [fotoBisnisFiles, setFotoBisnisFiles] = useState<File[]>([]);
+  const [portofolioFiles, setPortofolioFiles] = useState<File[]>([]);
+
+  const [kategoriSuggestions, setKategoriSuggestions] = useState<string[]>([]);
+  const [layananOptions, setLayananOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const selectedKategori = typeof window !== 'undefined' ? localStorage.getItem("selected_kategori") : null;
+
+    if (selectedKategori === "fnb") {
+      setKategoriSuggestions([
+        "Warung Makan", "Rumah Makan Padang", "Warteg & Warung Nasi", "Kedai Kopi & Cafe",
+        "Bakso & Mie Ayam", "Soto & Rawon", "Ayam Geprek & Ayam Goreng", "Seafood",
+        "Bakery & Roti", "Kue & Snack", "Es & Minuman Segar", "Jus & Smoothie",
+        "Bubble Tea & Boba", "Pizza & Pasta", "Burger & Sandwich", "Sushi & Japanese Food",
+        "Nasi Goreng & Mie Goreng", "Catering Harian", "Catering Pernikahan", "Katering Kantor",
+        "Gorengan & Jajanan", "Martabak", "Pecel & Gado-gado", "Sate & Tongseng",
+        "Nasi Uduk & Nasi Kuning", "Frozen Food", "Hampers & Parsel Makanan"
+      ]);
+      setLayananOptions([
+        "Makan di Tempat (Dine In)", "Bawa Pulang (Take Away)", "Pesan Antar (Delivery)",
+        "Catering untuk Acara", "Paket Prasmanan", "Paket Nasi Kotak",
+        "Pesan via GoFood/GrabFood/ShopeeFood", "Pesan via WhatsApp", "Open PO (Pre-Order)",
+        "Paket Keluarga", "Paket Hemat", "Custom Order/Pesanan Khusus",
+        "Hampers & Parsel", "Frozen Food (Bisa Dikirim)",
+        "Tersedia untuk Arisan & Pengajian", "Tersedia untuk Hajatan & Pernikahan"
+      ]);
+    } else if (selectedKategori === "kreatif") {
+      setKategoriSuggestions([
+        "Batik & Tenun", "Kerajinan Bambu", "Kerajinan Rotan", "Kerajinan Kayu",
+        "Kerajinan Tanah Liat & Gerabah", "Kerajinan Perak & Emas", "Kerajinan Kulit", "Anyaman & Tas Rajut",
+        "Sablon & Merchandise", "Lukisan & Seni Rupa", "Patung & Ukiran", "Kerajinan Batu",
+        "Souvenir & Cinderamata", "Boneka & Mainan", "Lilin & Aromaterapi Handmade",
+        "Sabun & Kosmetik Handmade", "Buket Bunga & Floral", "Decoupage & Scrapbook",
+        "Kaligrafi & Dekorasi Islami", "Fashion & Pakaian Handmade",
+        "Aksesoris & Perhiasan Handmade", "Tembikar & Pottery", "Wayang & Kesenian Tradisional"
+      ]);
+      setLayananOptions([
+        "Produk Ready Stock", "Custom Order/Pesanan Khusus", "Ukiran/Tulisan Nama",
+        "Tersedia Grosir & Eceran", "Pengiriman ke Seluruh Indonesia", "Bisa COD Area Lokal",
+        "Workshop & Pelatihan", "Konsultasi Desain Gratis", "Revisi Desain",
+        "Foto Produk Profesional", "Packaging Cantik & Gift Wrap",
+        "Tersedia untuk Souvenir Pernikahan", "Tersedia untuk Souvenir Perusahaan",
+        "Kolaborasi & Reseller", "Open Dropship"
+      ]);
+    } else {
+      // Default / "jasa"
+      setKategoriSuggestions([
+        "Servis AC & Elektronik", "Bengkel Motor & Mobil", "Salon & Barbershop", "Laundry & Dry Cleaning",
+        "Fotografer & Videografer", "Katering & Nasi Box", "Jasa Kebersihan & Cleaning Service",
+        "Les Privat & Bimbel", "Konsultan Bisnis", "Desain Grafis & Percetakan", "Jasa Antar & Kurir",
+        "Tukang & Renovasi Rumah", "Wedding Organizer", "Event Organizer", "Jasa Jahit & Konveksi",
+        "Studio Foto", "Jasa Titip (Jastip)", "Travel Agent", "Spa & Refleksi",
+        "Klinik Kecantikan", "Klinik Kesehatan", "Dokter Praktek", "Bidan & Dukun Beranak",
+        "Pengacara & Notaris", "Akuntan & Pajak", "Rental Kendaraan", "Parkir & Titip Motor",
+        "Jasa Cuci Sofa & Kasur", "Jasa Las & Bubut", "Jasa Print & Fotocopy"
+      ]);
+      setLayananOptions([
+        "Servis Panggilan ke Rumah", "Servis di Tempat/Workshop", "Konsultasi Gratis", "Garansi Pengerjaan",
+        "Antar Jemput Barang", "Instalasi & Pemasangan", "Perawatan Berkala/Servis Rutin",
+        "Pembersihan & Cuci", "Perbaikan Darurat 24 Jam", "Desain & Perencanaan", "Pelatihan & Edukasi",
+        "Dokumentasi Foto & Video", "Dekorasi & Penataan", "Pengiriman ke Seluruh Indonesia",
+        "Layanan COD", "Konsultasi Online via WA", "Kunjungan ke Lokasi", "Paket Bulanan",
+        "Paket Tahunan", "Member & Langganan"
+      ]);
+    }
+  }, []);
+
+  useEffect(() => {
+    const selectedKategori = typeof window !== 'undefined' ? localStorage.getItem("selected_kategori") : null;
+    if (selectedKategori === "fnb" || selectedKategori === "kreatif") return;
+
+    const kat = formData.kategoriJasa.toLowerCase();
+    const isFoto = kat.includes("fotografi") || kat.includes("foto");
+    const isVideo = kat.includes("videografi") || kat.includes("video");
+
+    const fotoOptions = [
+      "Foto Pernikahan (Wedding)", "Foto Prewedding", "Foto Wisuda & Graduation",
+      "Foto Produk untuk Online Shop", "Foto Makanan (Food Photography)", "Foto Fashion & Model",
+      "Foto Keluarga & Newborn", "Foto Ulang Tahun & Sweet 17", "Foto Event & Seminar",
+      "Foto Profil Perusahaan (Company Profile)", "Foto Arsitektur & Interior",
+      "Foto Headshot & Personal Branding", "Foto Katalog Produk", "Foto Dokumentasi Acara Kantor",
+      "Sewa Studio Foto per Jam", "Editing & Retouching Foto", "Cetak Foto & Album"
+    ];
+
+    const videoOptions = [
+      "Video Pernikahan (Wedding Cinematography)", "Video Prewedding",
+      "Video Profil Perusahaan (Company Profile)", "Video Iklan & Promosi Produk",
+      "Video Konten Media Sosial (Reels/TikTok)", "Video Dokumentasi Event & Seminar",
+      "Video Wisuda & Graduation", "Video Ulang Tahun & Sweet 17",
+      "Video Tutorial & Edukasi", "Video Testimoni Pelanggan", "Video Drone (Aerial)",
+      "Video Music & Cover Song", "Live Streaming Event", "Editing Video",
+      "Motion Graphic & Animasi", "Video After Movie"
+    ];
+
+    if (isFoto && isVideo) {
+      setLayananOptions([...fotoOptions, ...videoOptions]);
+    } else if (isFoto) {
+      setLayananOptions(fotoOptions);
+    } else if (isVideo) {
+      setLayananOptions(videoOptions);
+    } else {
+      setLayananOptions([
+        "Servis Panggilan ke Rumah", "Servis di Tempat/Workshop", "Konsultasi Gratis", "Garansi Pengerjaan",
+        "Antar Jemput Barang", "Instalasi & Pemasangan", "Perawatan Berkala/Servis Rutin",
+        "Pembersihan & Cuci", "Perbaikan Darurat 24 Jam", "Desain & Perencanaan", "Pelatihan & Edukasi",
+        "Dokumentasi Foto & Video", "Dekorasi & Penataan", "Pengiriman ke Seluruh Indonesia",
+        "Layanan COD", "Konsultasi Online via WA", "Kunjungan ke Lokasi", "Paket Bulanan",
+        "Paket Tahunan", "Member & Langganan"
+      ]);
+    }
+  }, [formData.kategoriJasa]);
 
   // Auth check — redirect to login if not authenticated
   useEffect(() => {
@@ -108,12 +234,12 @@ function BuatContent() {
         .eq('id', id)
         .eq('user_id', user.id)
         .single();
-        
+
       if (error || !data) {
         router.push('/dashboard');
         return;
       }
-      
+
       const loadedFormData = data.generated_content?.__formData || {
         ...INITIAL_FORM,
         namaBisnis: data.nama_usaha || "",
@@ -137,6 +263,7 @@ function BuatContent() {
         portofolio: data.foto_urls || [],
         fotoBisnis: data.generated_content?.fotoBisnis || [],
       });
+      setOriginalContent(data.generated_content);
       setGeneratedWebsiteId(data.id);
       setStep(2); // Go to Visual step
     } catch (err) {
@@ -144,6 +271,59 @@ function BuatContent() {
       router.push('/dashboard');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Debounce subdomain validation
+  useEffect(() => {
+    if (!showDeployModal || deployStatus === 'success') return;
+    
+    if (deploySubdomain.length < 3) {
+      setDeployStatus('idle');
+      return;
+    }
+
+    const checkSubdomain = async () => {
+      setDeployStatus('checking');
+      try {
+        const res = await fetch(`/api/check-subdomain?subdomain=${deploySubdomain}`);
+        const data = await res.json();
+        
+        if (data.available) {
+          setDeployStatus('available');
+        } else {
+          setDeployStatus('unavailable');
+          setDeployError(data.error || 'Subdomain tidak tersedia');
+        }
+      } catch (err) {
+        setDeployStatus('error');
+        setDeployError('Gagal mengecek subdomain');
+      }
+    };
+
+    const timer = setTimeout(checkSubdomain, 500);
+    return () => clearTimeout(timer);
+  }, [deploySubdomain, showDeployModal]);
+
+  const handleDeploy = async () => {
+    if (deployStatus !== 'available' || !generatedWebsiteId) return;
+    
+    setDeployStatus('deploying');
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('websites')
+        .update({ 
+          subdomain: deploySubdomain,
+          status: 'active'
+        })
+        .eq('id', generatedWebsiteId);
+
+      if (error) throw error;
+      setDeployStatus('success');
+    } catch (err: any) {
+      setDeployStatus('error');
+      setDeployError(err.message || "Gagal deploy website");
     }
   };
 
@@ -156,8 +336,8 @@ function BuatContent() {
   const canProceed = (): boolean => {
     if (step === 0) return !!(formData.namaBisnis.trim() && formData.kategoriJasa.trim() && formData.lokasi && formData.nomorWhatsApp.trim());
     if (step === 1) return !!(
-      formData.layananSpesifik.length > 0 && 
-      formData.keunggulan.trim() && 
+      formData.layananSpesifik.length > 0 &&
+      formData.keunggulan.trim() &&
       formData.usia.length > 0 &&
       formData.statusKeluarga.length > 0 &&
       formData.pekerjaan.length > 0 &&
@@ -170,18 +350,25 @@ function BuatContent() {
   /* ── File Upload Handlers ── */
   const handleLogoSelect = (file: File) => {
     if (formData.logo) URL.revokeObjectURL(formData.logo);
+    setLogoFile(file);
     updateField("logo", URL.createObjectURL(file));
   };
   const handleLogoRemove = () => {
     if (formData.logo) URL.revokeObjectURL(formData.logo);
+    setLogoFile(null);
     updateField("logo", "");
   };
   const handlePhotosSelect = (files: FileList, field: "fotoBisnis" | "portofolio") => {
-    const newUrls = Array.from(files).map((f) => URL.createObjectURL(f));
+    const fileArray = Array.from(files);
+    const newUrls = fileArray.map((f) => URL.createObjectURL(f));
+    if (field === "fotoBisnis") setFotoBisnisFiles(prev => [...prev, ...fileArray]);
+    else setPortofolioFiles(prev => [...prev, ...fileArray]);
     updateField(field, [...formData[field], ...newUrls]);
   };
   const handlePhotoRemove = (index: number, field: "fotoBisnis" | "portofolio") => {
     URL.revokeObjectURL(formData[field][index]);
+    if (field === "fotoBisnis") setFotoBisnisFiles(prev => prev.filter((_, i) => i !== index));
+    else setPortofolioFiles(prev => prev.filter((_, i) => i !== index));
     updateField(field, formData[field].filter((_, i) => i !== index));
   };
   const handleDrop = (e: React.DragEvent, type: "logo" | "fotoBisnis" | "portofolio") => {
@@ -232,6 +419,9 @@ function BuatContent() {
     if (!canProceed()) return;
     setIsLoading(true); setIsBuilding(true); setError("");
     setShowSavePrompt(false);
+    
+    abortControllerRef.current = new AbortController();
+
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -252,7 +442,7 @@ function BuatContent() {
         .from('websites')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
-        
+
       if (totalWebsites && totalWebsites >= 6) {
         throw new Error("Kamu sudah memiliki 6 website. Hapus salah satu website preview untuk membuat yang baru.");
       }
@@ -271,54 +461,81 @@ function BuatContent() {
         throw new Error("Kamu sudah generate 3x hari ini. Coba lagi besok pukul 00.00 WIB");
       }
 
-      // Upload function
-      const uploadImage = async (blobUrl: string, folder: string) => {
-        if (!blobUrl.startsWith('blob:')) return blobUrl; // Return existing URL
+      // Upload function — uses File objects directly for reliable upload
+      const uploadFile = async (file: File, folder: string) => {
         try {
-          const response = await fetch(blobUrl);
-          const blob = await response.blob();
-          const fileExt = blob.type.split('/')[1] || 'png';
+          const fileExt = file.name.split('.').pop() || 'png';
           const fileName = `${user.id}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
           const filePath = `${folder}/${fileName}`;
-          
+
           const { error: uploadError } = await supabase.storage
             .from('website-assets')
-            .upload(filePath, blob);
-            
+            .upload(filePath, file, { upsert: true });
+
           if (uploadError) throw uploadError;
-          
+
           const { data: publicUrlData } = supabase.storage.from('website-assets').getPublicUrl(filePath);
           return publicUrlData.publicUrl;
-        } catch (e) {
+        } catch (e: any) {
           console.error("Upload error:", e);
-          throw new Error("Gagal upload gambar. Silakan coba lagi.");
+          throw new Error(`Gagal upload gambar (${folder}). Detail: ${e.message || 'Kesalahan tidak diketahui'}.`);
         }
       };
 
       let logoUrl = "";
-      if (formData.logo) {
-        logoUrl = await uploadImage(formData.logo, 'logos');
+      if (logoFile) {
+        logoUrl = await uploadFile(logoFile, 'logos');
+      } else if (formData.logo && !formData.logo.startsWith('blob:')) {
+        logoUrl = formData.logo; // Already uploaded URL
       }
 
-      let portofolioUrls: string[] = [];
-      for (const url of formData.portofolio) {
-        const pUrl = await uploadImage(url, 'portofolio');
-        portofolioUrls.push(pUrl);
-      }
+      // Parallelize portofolio uploads
+      const portofolioUploadPromises = formData.portofolio.map(async (url, i) => {
+        if (url.startsWith('blob:') && portofolioFiles[i]) {
+          return await uploadFile(portofolioFiles[i], 'portofolio');
+        } else if (!url.startsWith('blob:')) {
+          return url; // Already uploaded URL
+        }
+        return "";
+      });
+      const portofolioUrls = (await Promise.all(portofolioUploadPromises)).filter(url => url !== "");
 
       // Call API
-      const res = await fetch("/api/generate", { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify(formData) 
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+        signal: abortControllerRef.current.signal
       });
 
       if (!res.ok) {
-         const errorData = await res.json().catch(() => null);
-         throw new Error(errorData?.error || "Gagal mengenerate website. Coba lagi.");
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.error || "Gagal mengenerate website. Coba lagi.");
       }
-      
-      const aiData = await res.json();
+
+      if (!res.body) throw new Error("Tidak ada stream dari server.");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let streamData = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        streamData += decoder.decode(value, { stream: true });
+      }
+
+      let aiData;
+      try {
+        let jsonString = streamData.trim();
+        const jsonMatch = jsonString.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
+        if (jsonMatch) {
+          jsonString = jsonMatch[1].trim();
+        }
+        aiData = JSON.parse(jsonString);
+      } catch (err) {
+        console.error("Parse error on stream data:", streamData);
+        throw new Error("Format respons dari AI tidak valid.");
+      }
 
       const finalData: TemplateData = {
         hero: aiData.hero || { headline: "", subheadline: "", ctaText: "" },
@@ -327,11 +544,11 @@ function BuatContent() {
         targetPelanggan: aiData.targetPelanggan || { deskripsi: "", painPoint: "", solusi: "" },
         testimonialPlaceholder: aiData.testimonialPlaceholder || [],
         footer: aiData.footer || { tagline: "", ctaText: "" },
-        
+
         namaBisnis: formData.namaBisnis,
         kategori: formData.kategoriJasa,
         lokasi: formData.lokasi,
-        
+
         kontak: {
           wa: formData.nomorWhatsApp,
           telepon: formData.telepon,
@@ -346,7 +563,7 @@ function BuatContent() {
           primary: formData.primaryColor,
           tema: (formData.tema || "light") as "dark" | "light",
         },
-        
+
         paketHarga: formData.paketHarga,
         logo: logoUrl,
         portofolio: portofolioUrls,
@@ -360,7 +577,7 @@ function BuatContent() {
       const templateId = localStorage.getItem('selected_template') || 'jasa-001';
 
       let dbData, dbError;
-      
+
       const payload = {
         user_id: user.id,
         nama_usaha: projectName || formData.namaBisnis || "Website Baru",
@@ -398,20 +615,52 @@ function BuatContent() {
       }
 
       setTemplateData(finalData);
-      
-      // Show building animation for a few seconds
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+
+      // Show building animation for a few seconds if stream finishes too quickly
+      // Now that we have streaming, we don't need artificial delay, but we'll leave a small 1s buffer for UX
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       setStep(2); // Lanjut ke step 3
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan tidak terduga.");
-    } finally { 
-      setIsLoading(false); 
-      setIsBuilding(false); 
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        setError("Proses generate dibatalkan.");
+      } else {
+        setError(err instanceof Error ? err.message : "Terjadi kesalahan tidak terduga.");
+      }
+    } finally {
+      setIsLoading(false);
+      setIsBuilding(false);
     }
+  };
+
+  const checkHasChanges = () => {
+    if (!originalContent) return true; // if not loaded, always has changes
+
+    const tentativeUpdatedContent: TemplateData = {
+      ...(templateData || ({} as TemplateData)),
+      namaBisnis: formData.namaBisnis,
+      kategori: formData.kategoriJasa,
+      lokasi: formData.lokasi,
+      kontak: { wa: formData.nomorWhatsApp, telepon: formData.telepon, email: formData.email },
+      sosmed: { instagram: formData.instagram, tiktok: formData.tiktok, twitter: formData.x_twitter },
+      warna: { primary: formData.primaryColor, tema: (formData.tema || "light") as "dark" | "light" },
+      paketHarga: formData.paketHarga,
+      logo: formData.logo,
+      portofolio: formData.portofolio,
+    };
+
+    const tentativeFinalDbContent = { ...tentativeUpdatedContent, __formData: formData };
+    return JSON.stringify(tentativeFinalDbContent) !== JSON.stringify(originalContent);
   };
 
   const handleSaveUpdate = async () => {
     if (!canProceed() || !idParam) return;
+    
+    if (!checkHasChanges()) {
+      alert("Tidak ada perubahan.");
+      setShowSavePrompt(false);
+      return;
+    }
+
     setIsLoading(true); setError("");
     setShowSavePrompt(false);
 
@@ -420,29 +669,39 @@ function BuatContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Anda harus login.");
 
-      const uploadImage = async (blobUrl: string, folder: string) => {
-        if (!blobUrl.startsWith('blob:')) return blobUrl; // already uploaded
+      // Upload function — uses File objects directly for reliable upload
+      const uploadFile = async (file: File, folder: string) => {
         try {
-          const response = await fetch(blobUrl);
-          const blob = await response.blob();
-          const fileExt = blob.type.split('/')[1] || 'png';
+          const fileExt = file.name.split('.').pop() || 'png';
           const fileName = `${user.id}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
           const filePath = `${folder}/${fileName}`;
-          const { error: uploadError } = await supabase.storage.from('website-assets').upload(filePath, blob);
+          const { error: uploadError } = await supabase.storage.from('website-assets').upload(filePath, file, { upsert: true });
           if (uploadError) throw uploadError;
           const { data: publicUrlData } = supabase.storage.from('website-assets').getPublicUrl(filePath);
           return publicUrlData.publicUrl;
-        } catch (e) {
+        } catch (e: any) {
           console.error("Upload error:", e);
-          throw new Error("Gagal upload gambar.");
+          throw new Error(`Gagal upload gambar (${folder}). Detail: ${e.message || 'Kesalahan tidak diketahui'}.`);
         }
       };
 
-      let logoUrl = formData.logo ? await uploadImage(formData.logo, 'logos') : "";
-      let portofolioUrls: string[] = [];
-      for (const url of formData.portofolio) {
-        portofolioUrls.push(await uploadImage(url, 'portofolio'));
+      let logoUrl = "";
+      if (logoFile) {
+        logoUrl = await uploadFile(logoFile, 'logos');
+      } else if (formData.logo && !formData.logo.startsWith('blob:')) {
+        logoUrl = formData.logo;
       }
+
+      // Parallelize portofolio uploads
+      const portofolioUploadPromises = formData.portofolio.map(async (url, i) => {
+        if (url.startsWith('blob:') && portofolioFiles[i]) {
+          return await uploadFile(portofolioFiles[i], 'portofolio');
+        } else if (!url.startsWith('blob:')) {
+          return url;
+        }
+        return "";
+      });
+      const portofolioUrls = (await Promise.all(portofolioUploadPromises)).filter(url => url !== "");
 
       // Merge current templateData with new formData
       const updatedContent: TemplateData = {
@@ -473,7 +732,7 @@ function BuatContent() {
         .eq('id', idParam);
 
       if (dbError) throw dbError;
-      
+
       setTemplateData(updatedContent);
       alert("Perubahan berhasil disimpan!");
     } catch (err: any) {
@@ -495,8 +754,8 @@ function BuatContent() {
       {/* Top Bar */}
       <header className="flex-shrink-0 h-14 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-xl flex items-center justify-between px-3 sm:px-5">
         <div className="flex items-center gap-2 sm:gap-3">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => {
               if (templateData) setShowBackDialog(true);
               else router.push('/dashboard/template');
@@ -564,7 +823,7 @@ function BuatContent() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Award className="w-3 h-3" /> Kategori Jasa</label>
-                  <AutocompleteInput id="input-kategori" value={formData.kategoriJasa} onChange={(v) => updateField("kategoriJasa", v)} suggestions={KATEGORI_SUGGESTIONS} placeholder="contoh: Servis AC" />
+                  <AutocompleteInput id="input-kategori" value={formData.kategoriJasa} onChange={(v) => updateField("kategoriJasa", v)} suggestions={kategoriSuggestions} placeholder="contoh: Servis AC" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><MapPin className="w-3 h-3" /> Lokasi / Area</label>
@@ -617,7 +876,7 @@ function BuatContent() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Award className="w-3 h-3" /> Layanan Spesifik</label>
-                  <MultiSelectDropdown id="input-layanan" value={formData.layananSpesifik} onChange={(val) => updateField("layananSpesifik", val)} options={LAYANAN_OPTIONS} placeholder="Pilih layanan..." />
+                  <MultiSelectDropdown id="input-layanan" value={formData.layananSpesifik} onChange={(val) => updateField("layananSpesifik", val)} options={layananOptions} placeholder="Pilih layanan..." />
                 </div>
                 <div className="space-y-3 pt-2">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Target className="w-3 h-3" /> Target Pelanggan</label>
@@ -862,28 +1121,41 @@ function BuatContent() {
           </div>
 
           {/* Navigation */}
-          <div className="px-5 py-4 border-t border-zinc-800/50 flex gap-2.5">
-            {step > 0 && (
-              <button type="button" onClick={() => setStep((s) => s - 1)} className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border border-zinc-800 text-zinc-400 text-[13px] font-medium hover:bg-zinc-900 hover:text-zinc-200 transition-all duration-200 cursor-pointer">
-                <ChevronLeft className="w-3.5 h-3.5" /> Kembali
-              </button>
-            )}
-            {step < 2 ? (
-              <button type="button" onClick={() => setStep((s) => s + 1)} disabled={!canProceed()} className={`flex-1 flex items-center justify-center gap-1.5 font-medium text-[13px] py-3 rounded-xl transition-all duration-200 cursor-pointer ${canProceed() ? "bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20" : "bg-zinc-800 text-zinc-100 opacity-40 cursor-not-allowed"}`}>
-                Lanjut <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            ) : idParam ? (
-              <div className="flex-1 flex gap-2">
-                <button type="button" onClick={() => { setProjectName(formData.namaBisnis || ""); setSaveActionType("generate"); setShowSavePrompt(true); }} disabled={!canProceed() || isLoading} className="flex-1 flex items-center justify-center gap-2 bg-zinc-800 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer border border-zinc-700">
-                  {isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Memproses...</>) : ("Generate Ulang")}
+          <div className="px-5 py-4 border-t border-zinc-800/50 flex flex-col gap-3">
+            <div className="flex gap-2.5 w-full">
+              {step > 0 && (
+                <button type="button" onClick={() => setStep((s) => s - 1)} className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border border-zinc-800 text-zinc-400 text-[13px] font-medium hover:bg-zinc-900 hover:text-zinc-200 transition-all duration-200 cursor-pointer">
+                  <ChevronLeft className="w-3.5 h-3.5" /> Kembali
                 </button>
-                <button type="button" onClick={() => { setProjectName(formData.namaBisnis || ""); setSaveActionType("update"); setShowSavePrompt(true); }} disabled={!canProceed() || isLoading} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-600/20 cursor-pointer">
-                  {isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Menyimpan...</>) : ("Simpan Perubahan")}
+              )}
+              {step < 2 ? (
+                <button type="button" onClick={() => setStep((s) => s + 1)} disabled={!canProceed()} className={`flex-1 flex items-center justify-center gap-1.5 font-medium text-[13px] py-3 rounded-xl transition-all duration-200 cursor-pointer ${canProceed() ? "bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20" : "bg-zinc-800 text-zinc-100 opacity-40 cursor-not-allowed"}`}>
+                  Lanjut <ChevronRight className="w-3.5 h-3.5" />
                 </button>
-              </div>
-            ) : (
-              <button id="btn-generate" type="button" onClick={() => { setProjectName(formData.namaBisnis || ""); setSaveActionType("generate"); setShowSavePrompt(true); }} disabled={!canProceed() || isLoading} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-indigo-600/20 disabled:shadow-none cursor-pointer">
-                {isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Sedang memproses...</>) : ("Generate Website")}
+              ) : idParam ? (
+                <div className="flex-1 flex gap-2">
+                  <button type="button" onClick={() => { setProjectName(formData.namaBisnis || ""); setSaveActionType("generate"); setShowSavePrompt(true); }} disabled={!canProceed() || isLoading} className="flex-1 flex items-center justify-center gap-2 bg-zinc-800 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer border border-zinc-700">
+                    {isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Memproses...</>) : ("Generate Ulang")}
+                  </button>
+                  <button type="button" onClick={() => { setProjectName(formData.namaBisnis || ""); setSaveActionType("update"); setShowSavePrompt(true); }} disabled={!canProceed() || isLoading || !checkHasChanges()} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-600/20 cursor-pointer">
+                    {isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Menyimpan...</>) : ("Simpan Perubahan")}
+                  </button>
+                </div>
+              ) : (
+                <button id="btn-generate" type="button" onClick={() => { setProjectName(formData.namaBisnis || ""); setSaveActionType("generate"); setShowSavePrompt(true); }} disabled={!canProceed() || isLoading} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-indigo-600/20 disabled:shadow-none cursor-pointer">
+                  {isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Sedang memproses...</>) : ("Generate Website")}
+                </button>
+              )}
+            </div>
+
+            {/* NEW: Deploy Button */}
+            {step === 2 && generatedWebsiteId && (
+              <button 
+                type="button" 
+                onClick={() => setShowDeployModal(true)}
+                className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-600/20 cursor-pointer"
+              >
+                <Rocket className="w-4 h-4" /> Deploy Sekarang &rarr;
               </button>
             )}
           </div>
@@ -901,16 +1173,26 @@ function BuatContent() {
                 <Smartphone className="w-3.5 h-3.5" /> Mobile
               </button>
             </div>
-            <button type="button" onClick={handleOpenFullView} disabled={!templateData} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-zinc-500 hover:text-zinc-300 border border-zinc-800 hover:border-zinc-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer">
-              <ExternalLink className="w-3.5 h-3.5" /> Buka Full View
-            </button>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setIsEditMode(!isEditMode)} disabled={!templateData} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 cursor-pointer border shadow-sm ${isEditMode ? "bg-emerald-600 border-emerald-500 text-white" : "bg-indigo-600 border-indigo-500 text-white hover:bg-indigo-700"} disabled:opacity-30 disabled:cursor-not-allowed`}>
+                {isEditMode ? <><Check className="w-3.5 h-3.5" /> Selesai Edit</> : <><Pencil className="w-3.5 h-3.5" /> Edit Teks</>}
+              </button>
+              <button type="button" onClick={handleOpenFullView} disabled={!templateData} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-zinc-100 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 shadow-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer">
+                <ExternalLink className="w-3.5 h-3.5" /> Buka Full View
+              </button>
+            </div>
           </div>
           {/* Mobile-only: simple toolbar */}
           <div className="flex md:hidden items-center justify-between mb-2">
             <span className="text-[12px] text-zinc-500 font-medium">Preview Website</span>
-            <button type="button" onClick={handleOpenFullView} disabled={!templateData} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-zinc-500 hover:text-zinc-300 border border-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer">
-              <ExternalLink className="w-3 h-3" /> Full View
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button type="button" onClick={() => setIsEditMode(!isEditMode)} disabled={!templateData} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer border shadow-sm ${isEditMode ? "bg-emerald-600 border-emerald-500 text-white" : "bg-indigo-600 border-indigo-500 text-white"} disabled:opacity-30 disabled:cursor-not-allowed`}>
+                {isEditMode ? "✅ Selesai" : "✏️ Edit"}
+              </button>
+              <button type="button" onClick={handleOpenFullView} disabled={!templateData} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-zinc-100 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 shadow-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer">
+                <ExternalLink className="w-3 h-3" /> Full View
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 flex items-center justify-center overflow-hidden relative">
@@ -927,8 +1209,8 @@ function BuatContent() {
                   </div>
                   <div className="w-[52px]" />
                 </div>
-                <div className={`flex-1 overflow-y-auto ${templateData?.warna?.tema === "dark" ? "bg-zinc-950" : "bg-white"}`}>{templateData ? <TemplateSatu {...templateData} forceMobile={false} /> : <EmptyState />}</div>
-                {isBuilding && <BuildingOverlay />}
+                <div className={`flex-1 overflow-y-auto ${templateData?.warna?.tema === "dark" ? "bg-zinc-950" : "bg-white"}`}>{templateData ? <TemplateSatu {...templateData} forceMobile={false} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} /> : <EmptyState />}</div>
+                {isBuilding && <BuildingOverlay onCancel={() => { abortControllerRef.current?.abort(); setIsBuilding(false); setIsLoading(false); }} />}
               </div>
             </div>
             <div className={`hidden md:block absolute inset-0 transition-all duration-500 ease-in-out ${viewMode === "mobile" ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"}`}>
@@ -939,18 +1221,18 @@ function BuatContent() {
                       <div className="w-3 h-3 rounded-full bg-zinc-800 border border-zinc-700 mr-2" /><div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                     </div>
                   </div>
-                  <div className="h-full w-full overflow-y-auto">{templateData ? <TemplateSatu {...templateData} forceMobile={true} /> : <EmptyState />}</div>
+                  <div className="h-full w-full overflow-y-auto">{templateData ? <TemplateSatu {...templateData} forceMobile={true} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} /> : <EmptyState />}</div>
                   <div className={`flex-shrink-0 flex justify-center py-2 ${templateData?.warna?.tema === "dark" ? "bg-zinc-950" : "bg-white"}`}><div className={`w-32 h-1 rounded-full ${templateData?.warna?.tema === "dark" ? "bg-zinc-700" : "bg-zinc-300"}`} /></div>
-                  {isBuilding && <BuildingOverlay />}
+                  {isBuilding && <BuildingOverlay onCancel={() => { abortControllerRef.current?.abort(); setIsBuilding(false); setIsLoading(false); }} />}
                 </div>
               </div>
             </div>
             {/* ── Mobile-only: direct inline preview (no device frame) ── */}
             <div className="md:hidden w-full h-full flex flex-col rounded-xl border border-zinc-800 overflow-hidden relative">
               <div className={`flex-1 overflow-y-auto ${templateData?.warna?.tema === "dark" ? "bg-zinc-950" : "bg-white"}`}>
-                {templateData ? <TemplateSatu {...templateData} forceMobile={true} /> : <EmptyState />}
+                {templateData ? <TemplateSatu {...templateData} forceMobile={true} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} /> : <EmptyState />}
               </div>
-              {isBuilding && <BuildingOverlay />}
+              {isBuilding && <BuildingOverlay onCancel={() => { abortControllerRef.current?.abort(); setIsBuilding(false); setIsLoading(false); }} />}
             </div>
           </div>
         </main>
@@ -1003,19 +1285,19 @@ function BuatContent() {
               Beri nama project ini agar mudah dicari di Dashboard. Nama ini tidak akan terlihat oleh pelanggan Anda.
             </p>
             <div className="mb-6">
-                <input 
-                    type="text"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                    placeholder="Contoh: Landing Page Promo"
-                    autoFocus
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                            saveActionType === "generate" ? handleGenerate() : handleSaveUpdate();
-                        }
-                    }}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-[14px] text-white focus:outline-none focus:border-indigo-500 transition-colors"
-                />
+              <input
+                type="text"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                placeholder="Contoh: Landing Page Promo"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    saveActionType === "generate" ? handleGenerate() : handleSaveUpdate();
+                  }
+                }}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-[14px] text-white focus:outline-none focus:border-indigo-500 transition-colors"
+              />
             </div>
             <div className="flex gap-3">
               <button
@@ -1046,19 +1328,19 @@ function BuatContent() {
               Beri nama project ini agar mudah dicari di Dashboard. Nama ini tidak akan terlihat oleh pelanggan Anda.
             </p>
             <div className="mb-6">
-                <input 
-                    type="text"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                    placeholder="Contoh: Landing Page Promo"
-                    autoFocus
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                            saveActionType === "generate" ? handleGenerate() : handleSaveUpdate();
-                        }
-                    }}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-[14px] text-white focus:outline-none focus:border-indigo-500 transition-colors"
-                />
+              <input
+                type="text"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                placeholder="Contoh: Landing Page Promo"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    saveActionType === "generate" ? handleGenerate() : handleSaveUpdate();
+                  }
+                }}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-[14px] text-white focus:outline-none focus:border-indigo-500 transition-colors"
+              />
             </div>
             <div className="flex gap-3">
               <button
@@ -1076,6 +1358,103 @@ function BuatContent() {
                 {saveActionType === "generate" ? "Generate" : "Simpan"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deploy Modal */}
+      {showDeployModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl w-full max-w-md shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
+            {deployStatus === 'success' ? (
+              <div className="flex flex-col items-center text-center py-4">
+                <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Website berhasil di-deploy! 🎉</h3>
+                <p className="text-zinc-400 text-sm mb-6">Website kamu sekarang live dan bisa diakses di internet.</p>
+                
+                <a 
+                  href={`https://${deploySubdomain}.buatkanweb.id`} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-xl mb-6 transition-colors border border-zinc-700 font-medium"
+                >
+                  <Globe className="w-4 h-4 text-emerald-400" />
+                  {deploySubdomain}.buatkanweb.id
+                  <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
+                </a>
+
+                <div className="w-full flex flex-col gap-2">
+                  <a 
+                    href={`https://${deploySubdomain}.buatkanweb.id`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full text-center bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 rounded-xl transition-colors shadow-lg shadow-emerald-600/20"
+                  >
+                    Buka Website &rarr;
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeployModal(false);
+                      router.push('/dashboard');
+                    }}
+                    className="w-full bg-transparent hover:bg-zinc-800 text-zinc-400 hover:text-white font-medium py-3 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Kembali ke Dashboard
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-lg font-bold text-white mb-2">Deploy Website ke Subdomain</h3>
+                <p className="text-zinc-400 text-[13px] mb-5 leading-relaxed">
+                  Pilih alamat unik untuk website kamu. Hanya bisa menggunakan huruf kecil, angka, dan tanda hubung (-).
+                </p>
+                
+                <div className="mb-6">
+                  <div className="flex bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden focus-within:border-indigo-500 transition-colors">
+                    <input
+                      type="text"
+                      value={deploySubdomain}
+                      onChange={(e) => setDeploySubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                      placeholder="contoh: swarnaworks"
+                      className="flex-1 bg-transparent px-4 py-3 text-[14px] text-white focus:outline-none"
+                    />
+                    <div className="bg-zinc-900 border-l border-zinc-800 px-4 py-3 flex items-center justify-center text-zinc-500 text-[14px]">
+                      .buatkanweb.id
+                    </div>
+                  </div>
+                  
+                  <div className="mt-2 text-[12px] h-4">
+                    {deployStatus === 'checking' && <span className="text-zinc-400 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Mengecek ketersediaan...</span>}
+                    {deployStatus === 'available' && <span className="text-emerald-400 flex items-center gap-1"><Check className="w-3 h-3" /> Subdomain tersedia!</span>}
+                    {deployStatus === 'unavailable' && <span className="text-red-400 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {deployError}</span>}
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeployModal(false)}
+                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-2.5 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeploy}
+                    disabled={deployStatus !== 'available' || deploySubdomain.length < 3}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-xl transition-colors cursor-pointer shadow-lg shadow-emerald-600/20"
+                  >
+                    {deployStatus === 'deploying' ? (
+                      <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Mandeploy...</span>
+                    ) : "Deploy \u2192"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -1106,39 +1485,44 @@ function EmptyState() {
   );
 }
 
-function BuildingOverlay() {
-  const [progress, setProgress] = useState(0);
-  const steps = [
-    "Menyusun struktur halaman...",
-    "Memasang konten bisnis...",
-    "Menerapkan desain visual...",
-    "Mengatur tata letak...",
-    "Finishing akhir...",
+function BuildingOverlay({ onCancel }: { onCancel: () => void }) {
+  const [msgIndex, setMsgIndex] = useState(0);
+  const [seconds, setSeconds] = useState(0);
+
+  const loadingMessages = [
+    "Memahami bisnis kamu...",
+    "Menyusun copywriting...",
+    "Merancang struktur website...",
+    "Hampir selesai..."
   ];
-  const currentStepIndex = Math.min(Math.floor(progress / 20), steps.length - 1);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) { clearInterval(interval); return 100; }
-        return prev + 1;
-      });
-    }, 50);
-    return () => clearInterval(interval);
+    const msgInterval = setInterval(() => {
+      setMsgIndex((i) => (i + 1) % loadingMessages.length);
+    }, 3000);
+    const secInterval = setInterval(() => {
+      setSeconds((s) => s + 1);
+    }, 1000);
+    return () => {
+      clearInterval(msgInterval);
+      clearInterval(secInterval);
+    };
   }, []);
 
   return (
-    <div className="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm flex flex-col items-center justify-center z-20 transition-opacity duration-300">
-      <div className="flex flex-col items-center gap-5 max-w-xs">
-        {/* Progress bar */}
-        <div className="w-56 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-indigo-500 rounded-full transition-all duration-150 ease-out"
-            style={{ width: `${progress}%` }}
-          />
+    <div className="absolute inset-0 bg-zinc-950/90 backdrop-blur-md flex flex-col items-center justify-center z-20 transition-opacity duration-300">
+      <div className="flex flex-col items-center gap-5 max-w-xs text-center">
+        <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
+        <div className="space-y-1">
+          <p className="text-white text-[15px] font-medium">{loadingMessages[msgIndex]}</p>
+          <p className="text-zinc-500 text-[12px]">{seconds} detik berjalan...</p>
         </div>
-        <p className="text-zinc-400 text-[13px] font-medium text-center">{steps[currentStepIndex]}</p>
-        <span className="text-zinc-600 text-[11px]">{progress}%</span>
+        <button 
+          onClick={onCancel}
+          className="mt-4 px-4 py-2 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors text-[12px] font-medium cursor-pointer"
+        >
+          Batalkan
+        </button>
       </div>
     </div>
   );

@@ -1,10 +1,21 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { LogOut, Plus, Eye, MessageSquare, RefreshCw, Clock, Globe, Trash2, Loader2, Edit2, Check, X } from 'lucide-react'
+import { LogOut, Plus, Eye, RefreshCw, Clock, Globe, Trash2, Loader2, Edit2, Check, X, Rocket, ExternalLink, AlertCircle, CheckCircle2, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
+
+const MAIN_DOMAIN = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'buatkanweb.id'
+
+const RESERVED_SUBDOMAINS = [
+    'www', 'api', 'admin', 'dashboard',
+    'app', 'mail', 'smtp', 'ftp', 'blog',
+    'dev', 'staging', 'test', 'demo',
+    'support', 'help', 'docs', 'status',
+    'buat', 'preview', 'auth', 'harga',
+    'portofolio', 'tentang', 'beranda', 's'
+]
 
 interface Website {
     id: string
@@ -13,6 +24,7 @@ interface Website {
     status: 'preview' | 'active' | 'expired'
     created_at: string
     expires_at: string | null
+    subdomain: string | null
 }
 
 interface DashboardClientProps {
@@ -87,6 +99,17 @@ export default function DashboardClient({
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
 
+    // Deploy state
+    const [deployingWebsite, setDeployingWebsite] = useState<Website | null>(null)
+    const [subdomainInput, setSubdomainInput] = useState('')
+    const [subdomainError, setSubdomainError] = useState('')
+    const [subdomainAvailable, setSubdomainAvailable] = useState(false)
+    const [isCheckingSubdomain, setIsCheckingSubdomain] = useState(false)
+    const [isDeploying, setIsDeploying] = useState(false)
+    const [deploySuccess, setDeploySuccess] = useState<{ subdomain: string; url: string } | null>(null)
+    const [toast, setToast] = useState('')
+    const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
     const handleDeleteWebsite = async (id: string) => {
         setIsDeleting(true)
         try {
@@ -116,6 +139,96 @@ export default function DashboardClient({
         } finally {
             setIsRenaming(false)
         }
+    }
+
+    // ─── Deploy handlers ───
+    const validateSubdomainLocal = useCallback((value: string): string => {
+        if (!value) return ''
+        if (value.length < 3) return 'Minimal 3 karakter.'
+        if (value.length > 30) return 'Maksimal 30 karakter.'
+        if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(value) && value.length >= 2) return 'Hanya huruf kecil, angka, dan tanda hubung (-). Tidak boleh diawali/diakhiri tanda hubung.'
+        if (value.length < 2 && !/^[a-z0-9]+$/.test(value)) return 'Hanya huruf kecil dan angka.'
+        if (value.includes('--')) return 'Tidak boleh menggunakan tanda hubung ganda (--).' 
+        if (RESERVED_SUBDOMAINS.includes(value)) return `"${value}" sudah dipesan sistem.`
+        return ''
+    }, [])
+
+    const checkSubdomainAvailability = useCallback(async (value: string) => {
+        if (!value || value.length < 3) return
+        const localError = validateSubdomainLocal(value)
+        if (localError) {
+            setSubdomainError(localError)
+            setSubdomainAvailable(false)
+            return
+        }
+        setIsCheckingSubdomain(true)
+        try {
+            const res = await fetch(`/api/check-subdomain?subdomain=${encodeURIComponent(value)}`)
+            const data = await res.json()
+            setSubdomainAvailable(data.available)
+            setSubdomainError(data.available ? '' : data.message)
+        } catch {
+            setSubdomainError('Gagal memeriksa ketersediaan.')
+            setSubdomainAvailable(false)
+        } finally {
+            setIsCheckingSubdomain(false)
+        }
+    }, [validateSubdomainLocal])
+
+    const handleSubdomainChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')
+        setSubdomainInput(raw)
+        setSubdomainAvailable(false)
+        setSubdomainError('')
+        if (checkTimeoutRef.current) clearTimeout(checkTimeoutRef.current)
+        if (raw.length >= 3) {
+            const localErr = validateSubdomainLocal(raw)
+            if (localErr) {
+                setSubdomainError(localErr)
+                return
+            }
+            checkTimeoutRef.current = setTimeout(() => checkSubdomainAvailability(raw), 500)
+        } else if (raw.length > 0) {
+            setSubdomainError('Minimal 3 karakter.')
+        }
+    }, [validateSubdomainLocal, checkSubdomainAvailability])
+
+    const handleDeploy = async () => {
+        if (!deployingWebsite || !subdomainInput || !subdomainAvailable) return
+        setIsDeploying(true)
+        try {
+            const { error } = await supabase
+                .from('websites')
+                .update({ subdomain: subdomainInput, status: 'active' })
+                .eq('id', deployingWebsite.id)
+            if (error) throw error
+            const url = `https://${subdomainInput}.${MAIN_DOMAIN}`
+            setDeploySuccess({ subdomain: subdomainInput, url })
+            setToast(`Website berhasil di-deploy! Akses di ${subdomainInput}.${MAIN_DOMAIN}`)
+            setTimeout(() => setToast(''), 5000)
+            router.refresh()
+        } catch (err) {
+            console.error('Deploy failed:', err)
+            setSubdomainError('Gagal deploy. Coba lagi.')
+        } finally {
+            setIsDeploying(false)
+        }
+    }
+
+    const openDeployModal = (site: Website) => {
+        setDeployingWebsite(site)
+        setSubdomainInput('')
+        setSubdomainError('')
+        setSubdomainAvailable(false)
+        setDeploySuccess(null)
+    }
+
+    const closeDeployModal = () => {
+        setDeployingWebsite(null)
+        setSubdomainInput('')
+        setSubdomainError('')
+        setSubdomainAvailable(false)
+        setDeploySuccess(null)
     }
 
     useEffect(() => {
@@ -460,6 +573,20 @@ export default function DashboardClient({
                                             </div>
                                         )}
 
+                                        {/* Active subdomain link */}
+                                        {site.status === 'active' && site.subdomain && (
+                                            <a
+                                                href={`https://${site.subdomain}.${MAIN_DOMAIN}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1.5 mb-4 text-[#67BAF4] text-[12px] font-medium hover:underline transition-colors"
+                                            >
+                                                <Globe className="w-3.5 h-3.5" />
+                                                {site.subdomain}.{MAIN_DOMAIN}
+                                                <ExternalLink className="w-3 h-3" />
+                                            </a>
+                                        )}
+
                                         {/* Spacer */}
                                         <div className="flex-1" />
 
@@ -473,14 +600,32 @@ export default function DashboardClient({
                                                     <RefreshCw className="w-3.5 h-3.5" />
                                                     Perpanjang
                                                 </Link>
-                                            ) : (
+                                            ) : site.status === 'active' ? (
                                                 <Link
                                                     href={`/buat?id=${site.id}`}
                                                     className="flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all"
                                                 >
-                                                    <Eye className="w-3.5 h-3.5" />
-                                                    Lihat Preview
+                                                    <Settings className="w-3.5 h-3.5" />
+                                                    Kelola
                                                 </Link>
+                                            ) : (
+                                                /* Preview status: show both preview and deploy buttons */
+                                                <>
+                                                    <button
+                                                        onClick={(e) => { e.preventDefault(); openDeployModal(site) }}
+                                                        className="flex items-center justify-center gap-2 bg-gradient-to-r from-[#1E466B] to-[#67BAF4] hover:from-[#255580] hover:to-[#67BAF4] text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all shadow-lg shadow-[#1E466B]/20 cursor-pointer"
+                                                    >
+                                                        <Rocket className="w-3.5 h-3.5" />
+                                                        Deploy Sekarang
+                                                    </button>
+                                                    <Link
+                                                        href={`/buat?id=${site.id}`}
+                                                        className="flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all"
+                                                    >
+                                                        <Eye className="w-3.5 h-3.5" />
+                                                        Lihat Preview
+                                                    </Link>
+                                                </>
                                             )}
                                         </div>
                                         </div>
@@ -491,6 +636,141 @@ export default function DashboardClient({
                     )}
                 </div>
             </main>
+
+            {/* ═══ DEPLOY MODAL ═══ */}
+            {deployingWebsite && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    {/* Backdrop */}
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={closeDeployModal} />
+                    
+                    {/* Modal */}
+                    <div className="relative w-full max-w-md bg-[#18181b] border border-zinc-800 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden" style={{ animation: 'fadeInUp 0.2s ease-out' }}>
+                        {/* Header */}
+                        <div className="px-6 pt-6 pb-4 border-b border-zinc-800">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1E466B] to-[#67BAF4] flex items-center justify-center">
+                                        <Rocket className="w-5 h-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-white font-bold text-[16px]">Deploy Website</h3>
+                                        <p className="text-zinc-500 text-[12px]">{deployingWebsite.nama_bisnis}</p>
+                                    </div>
+                                </div>
+                                <button onClick={closeDeployModal} className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-white transition-colors cursor-pointer">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Body */}
+                        <div className="px-6 py-5">
+                            {deploySuccess ? (
+                                /* ── Success State ── */
+                                <div className="text-center py-4">
+                                    <div className="w-16 h-16 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-4">
+                                        <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                                    </div>
+                                    <h4 className="text-white font-bold text-[18px] mb-2">Berhasil Di-deploy! 🎉</h4>
+                                    <p className="text-zinc-400 text-[13px] mb-5">Website kamu sekarang bisa diakses di:</p>
+                                    <a
+                                        href={deploySuccess.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 bg-[#1E466B]/20 hover:bg-[#1E466B]/30 border border-[#1E466B]/40 text-[#67BAF4] font-semibold text-[14px] px-5 py-3 rounded-xl transition-colors"
+                                    >
+                                        <Globe className="w-4 h-4" />
+                                        {deploySuccess.subdomain}.{MAIN_DOMAIN}
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                    </a>
+                                    <button
+                                        onClick={closeDeployModal}
+                                        className="block w-full mt-4 text-zinc-500 hover:text-zinc-300 text-[13px] font-medium transition-colors cursor-pointer"
+                                    >
+                                        Tutup
+                                    </button>
+                                </div>
+                            ) : (
+                                /* ── Input State ── */
+                                <>
+                                    <label className="block text-zinc-300 text-[13px] font-medium mb-2">Pilih Subdomain</label>
+                                    <div className="flex items-stretch">
+                                        <input
+                                            type="text"
+                                            value={subdomainInput}
+                                            onChange={handleSubdomainChange}
+                                            placeholder="nama-bisnis"
+                                            maxLength={30}
+                                            className={`flex-1 bg-zinc-900 border rounded-l-xl px-4 py-3 text-white text-[14px] placeholder:text-zinc-600 focus:outline-none transition-colors ${
+                                                subdomainError ? 'border-red-500/50 focus:border-red-500' :
+                                                subdomainAvailable ? 'border-emerald-500/50 focus:border-emerald-500' :
+                                                'border-zinc-700 focus:border-[#67BAF4]'
+                                            }`}
+                                        />
+                                        <div className="bg-zinc-800 border border-l-0 border-zinc-700 rounded-r-xl px-3 flex items-center">
+                                            <span className="text-zinc-400 text-[13px] font-medium whitespace-nowrap">.{MAIN_DOMAIN}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Validation feedback */}
+                                    <div className="mt-2 min-h-[20px]">
+                                        {isCheckingSubdomain ? (
+                                            <div className="flex items-center gap-1.5 text-zinc-500 text-[12px]">
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                Memeriksa ketersediaan...
+                                            </div>
+                                        ) : subdomainError ? (
+                                            <div className="flex items-center gap-1.5 text-red-400 text-[12px]">
+                                                <AlertCircle className="w-3 h-3" />
+                                                {subdomainError}
+                                            </div>
+                                        ) : subdomainAvailable ? (
+                                            <div className="flex items-center gap-1.5 text-emerald-400 text-[12px]">
+                                                <CheckCircle2 className="w-3 h-3" />
+                                                Subdomain tersedia!
+                                            </div>
+                                        ) : null}
+                                    </div>
+
+                                    {/* Info text */}
+                                    <p className="text-zinc-600 text-[11px] mt-3 leading-relaxed">
+                                        Setelah deploy, website kamu bisa diakses di <span className="text-zinc-400">{subdomainInput || 'nama-bisnis'}.{MAIN_DOMAIN}</span>
+                                    </p>
+
+                                    {/* Deploy button */}
+                                    <button
+                                        onClick={handleDeploy}
+                                        disabled={!subdomainAvailable || isDeploying}
+                                        className="w-full mt-5 flex items-center justify-center gap-2 bg-gradient-to-r from-[#1E466B] to-[#67BAF4] hover:from-[#255580] hover:to-[#67BAF4] disabled:from-zinc-800 disabled:to-zinc-800 disabled:text-zinc-600 text-white font-semibold text-[14px] py-3 px-6 rounded-xl transition-all shadow-lg shadow-[#1E466B]/20 disabled:shadow-none disabled:cursor-not-allowed cursor-pointer"
+                                    >
+                                        {isDeploying ? (
+                                            <><Loader2 className="w-4 h-4 animate-spin" /> Deploying...</>
+                                        ) : (
+                                            <><Rocket className="w-4 h-4" /> Deploy Sekarang<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg></>
+                                        )}
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ═══ TOAST ═══ */}
+            {toast && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-2 bg-emerald-600 text-white px-5 py-3 rounded-xl text-[13px] font-medium shadow-2xl shadow-emerald-600/30" style={{ animation: 'fadeInUp 0.3s ease-out' }}>
+                    <CheckCircle2 className="w-4 h-4" />
+                    {toast}
+                </div>
+            )}
+
+            {/* Animation keyframes */}
+            <style jsx global>{`
+                @keyframes fadeInUp {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
         </div>
     )
 }

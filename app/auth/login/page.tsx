@@ -36,7 +36,7 @@ function LoginContent() {
         setGoogleLoading(true)
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
-            options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextUrl)}` },
+            options: { redirectTo: `${window.location.origin}/auth/callback` },
         })
         if (error) { setError('Gagal masuk dengan Google.'); setGoogleLoading(false) }
     }

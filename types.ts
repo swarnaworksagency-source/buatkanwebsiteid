@@ -61,11 +61,20 @@ export interface AITestimonial {
   nama: string;
   peran: string;
   teks: string;
+  rating?: number;
 }
 
 export interface AIFooter {
   tagline: string;
   ctaText: string;
+  kontakTitle?: string;
+  sosmedTitle?: string;
+}
+
+export interface AICaraKerjaItem {
+  step: string;
+  title: string;
+  desc: string;
 }
 
 export interface TemplateData {
@@ -76,6 +85,8 @@ export interface TemplateData {
   targetPelanggan: AITargetPelanggan;
   testimonialPlaceholder: AITestimonial[];
   footer: AIFooter;
+  caraKerja?: AICaraKerjaItem[];
+  caraKerjaTitle?: string;
 
   // From Form Data & Storage
   namaBisnis: string;

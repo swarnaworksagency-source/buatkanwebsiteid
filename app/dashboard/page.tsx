@@ -13,6 +13,7 @@ interface Website {
     status: 'preview' | 'active' | 'expired'
     created_at: string
     expires_at: string | null
+    subdomain: string | null
 }
 
 export default async function DashboardPage() {
@@ -53,7 +54,8 @@ export default async function DashboardPage() {
         kategori_jasa: w.kategori || "",
         status: w.status,
         created_at: w.created_at,
-        expires_at: w.expires_at
+        expires_at: w.expires_at,
+        subdomain: w.subdomain || null
     })) ?? []
     const generatedToday = todayCount ?? 0
     const totalWebsites = allWebsites.length
