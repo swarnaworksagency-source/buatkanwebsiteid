@@ -406,11 +406,11 @@ function BuatContent() {
   };
 
   const handleDiscardAndBack = async () => {
-    if (generatedWebsiteId) {
+    if (generatedWebsiteId && !idParam) {
       const supabase = createClient();
       await supabase.from('websites').delete().eq('id', generatedWebsiteId);
     }
-    router.push('/dashboard/template');
+    router.push(idParam ? '/dashboard' : '/dashboard/template');
   };
 
   const handleSaveAndBack = () => {
