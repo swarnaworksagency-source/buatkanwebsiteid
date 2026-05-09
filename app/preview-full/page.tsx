@@ -13,7 +13,23 @@ export default function PreviewFullPage() {
     try {
       const stored = localStorage.getItem("zp_preview_data");
       if (stored) {
-        setData(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        setData(parsed);
+        
+        if (parsed.namaBisnis) {
+          document.title = parsed.namaBisnis;
+        }
+        
+        if (parsed.logo) {
+          let link = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+          if (!link) {
+            link = document.createElement('link');
+            document.getElementsByTagName('head')[0].appendChild(link);
+          }
+          link.type = 'image/x-icon';
+          link.rel = 'shortcut icon';
+          link.href = parsed.logo;
+        }
       }
     } catch {
       // Silently fail

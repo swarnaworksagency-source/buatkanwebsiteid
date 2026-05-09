@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import PreviewClient from './PreviewClient'
 import type { TemplateData } from '@/types'
+import type { Metadata } from 'next'
 
 const AVAILABLE_TEMPLATES: Record<string, { name: string; kategori: string }> = {
     'jasa-001': { name: 'Jasa Minimal', kategori: 'jasa' },
@@ -112,4 +113,42 @@ export default async function PreviewTemplatePage(props: {
             data={finalData}
         />
     )
+}
+
+export async function generateMetadata(props: {
+    params: Promise<{ templateId: string }>
+}): Promise<Metadata> {
+    const params = await props.params;
+    const { templateId } = params
+
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(templateId)
+    if (!isUUID) return {}
+
+    const supabase = await createServerSupabaseClient()
+    const { data: website } = await supabase
+        .from('websites')
+        .select('generated_content, nama_usaha')
+        .eq('id', templateId)
+        .single()
+
+    if (!website) return {}
+
+    const content = website.generated_content || {}
+
+    return {
+        title: content?.seo?.metaTitle || content?.namaBisnis || website.nama_usaha || 'Preview Website',
+        description: content?.seo?.metaDescription || content?.hero?.subheadline || '',
+        openGraph: {
+            title: content?.namaBisnis || website.nama_usaha || 'Preview Website',
+            description: content?.hero?.subheadline || '',
+            images: content?.logo ? [content.logo] : [],
+            type: 'website',
+            locale: 'id_ID',
+        },
+        icons: content?.logo ? {
+            icon: [{ url: content.logo, rel: 'icon' }],
+            shortcut: [{ url: content.logo, rel: 'shortcut icon' }],
+            apple: [{ url: content.logo, rel: 'apple-touch-icon' }],
+        } : undefined,
+    }
 }

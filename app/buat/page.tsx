@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { TemplateData, FormData, PaketHarga } from "@/types";
 import TemplateSatu from "@/components/templates/TemplateSatu";
 import { createClient } from "@/lib/supabase";
+import { convertToWebP, convertAllToWebP } from "@/lib/imageUtils";
 import { SearchableCombobox } from "@/components/ui/SearchableCombobox";
 import { AutocompleteInput } from "@/components/ui/AutocompleteInput";
 import { MultiSelectDropdown } from "@/components/ui/MultiSelectDropdown";
@@ -76,6 +77,7 @@ function BuatContent() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
   const [error, setError] = useState("");
   const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
   const [mobilePanel, setMobilePanel] = useState<"form" | "preview">("form");
@@ -482,17 +484,25 @@ function BuatContent() {
         }
       };
 
+      // Optimize images before upload
+      setIsOptimizing(true);
+      const optimizedLogo = logoFile ? await convertToWebP(logoFile, 0.9).catch(() => logoFile) : null;
+      const optimizedPortofolio = portofolioFiles.length > 0 
+        ? await convertAllToWebP(portofolioFiles, 0.85).catch(() => portofolioFiles) 
+        : portofolioFiles;
+      setIsOptimizing(false);
+
       let logoUrl = "";
-      if (logoFile) {
-        logoUrl = await uploadFile(logoFile, 'logos');
+      if (optimizedLogo) {
+        logoUrl = await uploadFile(optimizedLogo, 'logos');
       } else if (formData.logo && !formData.logo.startsWith('blob:')) {
         logoUrl = formData.logo; // Already uploaded URL
       }
 
       // Parallelize portofolio uploads
       const portofolioUploadPromises = formData.portofolio.map(async (url, i) => {
-        if (url.startsWith('blob:') && portofolioFiles[i]) {
-          return await uploadFile(portofolioFiles[i], 'portofolio');
+        if (url.startsWith('blob:') && optimizedPortofolio[i]) {
+          return await uploadFile(optimizedPortofolio[i], 'portofolio');
         } else if (!url.startsWith('blob:')) {
           return url; // Already uploaded URL
         }
@@ -685,17 +695,25 @@ function BuatContent() {
         }
       };
 
+      // Optimize images before upload
+      setIsOptimizing(true);
+      const optimizedLogo = logoFile ? await convertToWebP(logoFile, 0.9).catch(() => logoFile) : null;
+      const optimizedPortofolio = portofolioFiles.length > 0 
+        ? await convertAllToWebP(portofolioFiles, 0.85).catch(() => portofolioFiles) 
+        : portofolioFiles;
+      setIsOptimizing(false);
+
       let logoUrl = "";
-      if (logoFile) {
-        logoUrl = await uploadFile(logoFile, 'logos');
+      if (optimizedLogo) {
+        logoUrl = await uploadFile(optimizedLogo, 'logos');
       } else if (formData.logo && !formData.logo.startsWith('blob:')) {
         logoUrl = formData.logo;
       }
 
       // Parallelize portofolio uploads
       const portofolioUploadPromises = formData.portofolio.map(async (url, i) => {
-        if (url.startsWith('blob:') && portofolioFiles[i]) {
-          return await uploadFile(portofolioFiles[i], 'portofolio');
+        if (url.startsWith('blob:') && optimizedPortofolio[i]) {
+          return await uploadFile(optimizedPortofolio[i], 'portofolio');
         } else if (!url.startsWith('blob:')) {
           return url;
         }
@@ -1135,15 +1153,15 @@ function BuatContent() {
               ) : idParam ? (
                 <div className="flex-1 flex gap-2">
                   <button type="button" onClick={() => { setProjectName(formData.namaBisnis || ""); setSaveActionType("generate"); setShowSavePrompt(true); }} disabled={!canProceed() || isLoading} className="flex-1 flex items-center justify-center gap-2 bg-zinc-800 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer border border-zinc-700">
-                    {isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Memproses...</>) : ("Generate Ulang")}
+                    {isOptimizing ? (<><Loader2 className="w-4 h-4 animate-spin" /> Mengoptimalkan gambar...</>) : isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Memproses...</>) : ("Generate Ulang")}
                   </button>
                   <button type="button" onClick={() => { setProjectName(formData.namaBisnis || ""); setSaveActionType("update"); setShowSavePrompt(true); }} disabled={!canProceed() || isLoading || !checkHasChanges()} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-600/20 cursor-pointer">
-                    {isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Menyimpan...</>) : ("Simpan Perubahan")}
+                    {isOptimizing ? (<><Loader2 className="w-4 h-4 animate-spin" /> Mengoptimalkan gambar...</>) : isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Mengupload...</>) : ("Simpan Perubahan")}
                   </button>
                 </div>
               ) : (
                 <button id="btn-generate" type="button" onClick={() => { setProjectName(formData.namaBisnis || ""); setSaveActionType("generate"); setShowSavePrompt(true); }} disabled={!canProceed() || isLoading} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-indigo-600/20 disabled:shadow-none cursor-pointer">
-                  {isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Sedang memproses...</>) : ("Generate Website")}
+                  {isOptimizing ? (<><Loader2 className="w-4 h-4 animate-spin" /> Mengoptimalkan gambar...</>) : isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Mengupload...</>) : ("Generate Website")}
                 </button>
               )}
             </div>

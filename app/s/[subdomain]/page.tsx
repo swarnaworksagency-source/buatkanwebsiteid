@@ -72,5 +72,10 @@ export async function generateMetadata({ params }: SubdomainPageProps): Promise<
             type: 'website',
             locale: 'id_ID',
         },
+        icons: content?.logo ? {
+            icon: [{ url: content.logo, rel: 'icon' }],
+            shortcut: [{ url: content.logo, rel: 'shortcut icon' }],
+            apple: [{ url: content.logo, rel: 'apple-touch-icon' }],
+        } : undefined,
     }
 }
