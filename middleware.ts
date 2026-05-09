@@ -24,9 +24,13 @@ export async function middleware(request: NextRequest) {
         console.log('subdomain detected:', subdomain)
 
         if (subdomain) {
-            // Rewrite to internal /s/[subdomain] route using native URL object
-            const path = request.nextUrl.pathname === '/' ? '' : request.nextUrl.pathname
-            return NextResponse.rewrite(new URL(`/s/${subdomain}${path}`, request.url))
+            // Prevent infinite rewrite loops
+            if (request.nextUrl.pathname.startsWith(`/s/`)) {
+                return NextResponse.next()
+            }
+
+            // Rewrite to internal /s/[subdomain] route
+            return NextResponse.rewrite(new URL(`/s/${subdomain}${request.nextUrl.pathname}`, request.url))
         }
     }
 
