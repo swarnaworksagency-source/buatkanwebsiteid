@@ -24,12 +24,7 @@ export async function middleware(request: NextRequest) {
         console.log('subdomain detected:', subdomain)
 
         if (subdomain) {
-            // Prevent infinite rewrite loops in Vercel Edge
-            if (request.nextUrl.pathname.startsWith(`/s/${subdomain}`)) {
-                return NextResponse.next()
-            }
-
-            // Rewrite to internal /s/[subdomain] route using native URL object (Vercel standard)
+            // Rewrite to internal /s/[subdomain] route using native URL object
             const path = request.nextUrl.pathname === '/' ? '' : request.nextUrl.pathname
             return NextResponse.rewrite(new URL(`/s/${subdomain}${path}`, request.url))
         }
@@ -71,6 +66,14 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
     matcher: [
-        '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        /*
+         * Match all paths except for:
+         * 1. /api/ routes
+         * 2. /_next/ (Next.js internals)
+         * 3. /_static (inside /public)
+         * 4. /_vercel (Vercel internals)
+         * 5. all files with extensions (e.g. .ico, .png, .txt)
+         */
+        '/((?!api/|_next/|_static/|_vercel|[\\w-]+\\.\\w+).*)',
     ],
 }
