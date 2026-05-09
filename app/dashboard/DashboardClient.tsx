@@ -42,7 +42,7 @@ const MAX_DAILY = 3
 function getDaysLeft(expiresAt: string | null): number {
     if (!expiresAt) return 0
     const now = new Date()
-    const exp = new Date(expiresAt)
+    const exp = new Date(expiresAt.replace(' ', 'T'))
     const diff = exp.getTime() - now.getTime()
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
 }

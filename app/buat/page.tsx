@@ -7,6 +7,7 @@ import TemplateSatu from "@/components/templates/TemplateSatu";
 import { createClient } from "@/lib/supabase";
 import { convertToWebP, convertAllToWebP } from "@/lib/imageUtils";
 import { SearchableCombobox } from "@/components/ui/SearchableCombobox";
+import { safeStorage } from '@/lib/storage';
 import { AutocompleteInput } from "@/components/ui/AutocompleteInput";
 import { MultiSelectDropdown } from "@/components/ui/MultiSelectDropdown";
 import {
@@ -96,7 +97,7 @@ function BuatContent() {
   const [layananOptions, setLayananOptions] = useState<string[]>([]);
 
   useEffect(() => {
-    const selectedKategori = typeof window !== 'undefined' ? localStorage.getItem("selected_kategori") : null;
+    const selectedKategori = typeof window !== 'undefined' ? safeStorage.get("selected_kategori") : null;
 
     if (selectedKategori === "fnb") {
       setKategoriSuggestions([
@@ -158,7 +159,7 @@ function BuatContent() {
   }, []);
 
   useEffect(() => {
-    const selectedKategori = typeof window !== 'undefined' ? localStorage.getItem("selected_kategori") : null;
+    const selectedKategori = typeof window !== 'undefined' ? safeStorage.get("selected_kategori") : null;
     if (selectedKategori === "fnb" || selectedKategori === "kreatif") return;
 
     const kat = formData.kategoriJasa.toLowerCase();
@@ -584,7 +585,7 @@ function BuatContent() {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 14);
 
-      const templateId = localStorage.getItem('selected_template') || 'jasa-001';
+      const templateId = safeStorage.get('selected_template') || 'jasa-001';
 
       let dbData, dbError;
 
@@ -762,7 +763,7 @@ function BuatContent() {
 
   const handleOpenFullView = () => {
     if (templateData) {
-      localStorage.setItem("zp_preview_data", JSON.stringify(templateData));
+      safeStorage.set("zp_preview_data", JSON.stringify(templateData));
       window.open("/preview-full", "_blank");
     }
   };

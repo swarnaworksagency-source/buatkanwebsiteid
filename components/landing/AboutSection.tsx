@@ -54,7 +54,7 @@ const StatCard = ({
     <div className={`reveal ${delay} group relative bg-white/80 backdrop-blur-xl rounded-[2rem] border border-white p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(103,186,244,0.12)] transition-all duration-500 hover:-translate-y-2 flex flex-col overflow-hidden`}>
       <div className="mb-6 relative z-10">
         <h3 className="text-6xl sm:text-7xl font-extrabold tracking-tight mb-3 flex items-baseline">
-          <span className="bg-gradient-to-br from-[#1E466B] to-[#67BAF4] bg-clip-text text-transparent drop-shadow-sm">
+          <span className="bg-gradient-to-br from-[#1E466B] to-[#67BAF4] bg-clip-text text-transparent drop-shadow-sm safari-text-gradient">
             {count}
           </span>
           <span className="text-2xl sm:text-3xl text-[#67BAF4] ml-2 font-bold">{suffix}</span>

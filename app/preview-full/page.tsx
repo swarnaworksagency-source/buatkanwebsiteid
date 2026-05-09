@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { TemplateData } from "@/types";
 import TemplateSatu from "@/components/templates/TemplateSatu";
 import { Loader2 } from "lucide-react";
+import { safeStorage } from "@/lib/storage";
 
 export default function PreviewFullPage() {
   const [data, setData] = useState<TemplateData | null>(null);
@@ -11,7 +12,7 @@ export default function PreviewFullPage() {
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem("zp_preview_data");
+      const stored = safeStorage.get("zp_preview_data");
       if (stored) {
         const parsed = JSON.parse(stored);
         setData(parsed);

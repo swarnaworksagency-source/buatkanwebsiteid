@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
+import { safeStorage } from '@/lib/storage'
 import TemplateSatu from '@/components/templates/TemplateSatu'
 import type { TemplateData } from '@/types'
 
@@ -19,8 +20,8 @@ export default function PreviewClient({
     const router = useRouter()
 
     const handleSelect = () => {
-        localStorage.setItem('selected_template', templateId)
-        localStorage.setItem('selected_kategori', templateName ? 'jasa' : 'jasa')
+      safeStorage.set('selected_template', templateId)
+      safeStorage.set('selected_kategori', templateName ? 'jasa' : 'jasa')
         router.push('/buat')
     }
 

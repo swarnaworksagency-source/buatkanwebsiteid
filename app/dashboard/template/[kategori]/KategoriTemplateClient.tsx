@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { TemplateCard } from '@/components/TemplateCard'
+import { safeStorage } from '@/lib/storage'
 import { LogOut, ArrowLeft, Check, ExternalLink, Lock } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 
@@ -111,8 +113,8 @@ export default function KategoriTemplateClient({
 
     const handleSelectTemplate = (template: Template) => {
         setSelectedId(template.id)
-        localStorage.setItem('selected_kategori', kategori)
-        localStorage.setItem('selected_template', template.id)
+        safeStorage.set('selected_kategori', kategori)
+        safeStorage.set('selected_template', template.id)
         setTimeout(() => {
             router.push('/buat')
         }, 400)

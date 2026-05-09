@@ -45,7 +45,7 @@ export default function HeroSection() {
         >
           Website Profesional
           <br />
-          <span className="bg-gradient-to-r from-[#67BAF4] via-[#89cff0] to-[#1E466B] bg-clip-text text-transparent filter drop-shadow-lg">
+          <span className="bg-gradient-to-r from-[#67BAF4] via-[#89cff0] to-[#1E466B] bg-clip-text text-transparent filter drop-shadow-lg safari-text-gradient">
             Siap dalam 5 Menit
           </span>
         </h1>

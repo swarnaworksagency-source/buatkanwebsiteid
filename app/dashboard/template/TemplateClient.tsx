@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { LogOut, ArrowLeft, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
+import { safeStorage } from '@/lib/storage'
 
 interface TemplateClientProps {
     userName: string
@@ -95,7 +96,7 @@ export default function TemplateClient({ userName, userEmail, userAvatar }: Temp
 
     const handleSelect = (categoryId: string) => {
         setSelected(categoryId)
-        localStorage.setItem('selected_category', categoryId)
+        safeStorage.set('selected_category', categoryId)
         setTimeout(() => {
             router.push(`/dashboard/template/${categoryId}`)
         }, 400)
