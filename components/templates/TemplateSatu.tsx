@@ -114,6 +114,35 @@ export default function TemplateSatu(props: Props) {
   useEffect(() => { setEditedTestimonials([...testimonialPlaceholder]); }, [testimonialPlaceholder]);
   useEffect(() => { setEditedFooterTagline(footer.tagline); setEditedFooterCta(footer.ctaText); setEditedFooterKontakTitle(footer.kontakTitle || "Kontak"); setEditedFooterSosmedTitle(footer.sosmedTitle || "Sosial Media"); }, [footer]);
 
+  // Auto-sync inline edits back to parent so "Simpan Perubahan" in left panel gets them
+  useEffect(() => {
+    if (hasChanges && onContentUpdate) {
+      // Debounce slightly to avoid rapid state updates if multiple fields change quickly
+      const handler = setTimeout(() => {
+        onContentUpdate({
+          namaBisnis: editedNamaBisnis,
+          hero: { headline: editedHeadline, subheadline: editedSubheadline, ctaText: editedCtaText },
+          about: { judul: editedAboutJudul, deskripsi: editedAboutDeskripsi, keunggulan: editedAboutKeunggulan },
+          layanan: editedLayanan,
+          caraKerja: editedCaraKerja,
+          caraKerjaTitle: editedCaraKerjaTitle,
+          testimonialPlaceholder: editedTestimonials,
+          footer: { tagline: editedFooterTagline, ctaText: editedFooterCta, kontakTitle: editedFooterKontakTitle, sosmedTitle: editedFooterSosmedTitle },
+          paketHarga: paketHarga.map((p, i) => ({ ...p, namaPaket: editedPaketNama[i] ?? p.namaPaket, harga: editedPaketHarga[i] ?? p.harga })),
+        });
+      }, 100);
+      return () => clearTimeout(handler);
+    }
+  }, [
+    editedNamaBisnis, editedHeadline, editedSubheadline, editedCtaText, 
+    editedAboutJudul, editedAboutDeskripsi, editedAboutKeunggulan, 
+    editedLayanan, editedCaraKerja, editedCaraKerjaTitle, 
+    editedPaketNama, editedPaketHarga, editedTestimonials, 
+    editedFooterTagline, editedFooterCta, editedFooterKontakTitle, 
+    editedFooterSosmedTitle, editedFooterDesc, editedCopyright, 
+    paketHarga, hasChanges, onContentUpdate
+  ]);
+
   const markChanged = useCallback(() => setHasChanges(true), []);
   const em = isEditMode; // shorthand for edit mode
 

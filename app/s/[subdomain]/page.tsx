@@ -1,16 +1,26 @@
 import { createClient } from '@supabase/supabase-js'
 import TemplateSatu from '@/components/templates/TemplateSatu'
+import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 
 // Disable caching — always fetch fresh data from database
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+export const fetchCache = 'force-no-store'
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-import { notFound } from 'next/navigation'
-import type { Metadata } from 'next'
+// Create a fresh Supabase client per request to avoid stale data
+function getSupabase() {
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            db: { schema: 'public' },
+            global: {
+                headers: { 'Cache-Control': 'no-cache' }
+            }
+        }
+    )
+}
 
 interface SubdomainPageProps {
     params: Promise<{ subdomain: string }>
@@ -18,6 +28,8 @@ interface SubdomainPageProps {
 
 export default async function SubdomainPage({ params }: SubdomainPageProps) {
     const { subdomain } = await params
+    const supabase = getSupabase()
+
     const { data: website } = await supabase
         .from('websites')
         .select('*')
@@ -44,9 +56,9 @@ export default async function SubdomainPage({ params }: SubdomainPageProps) {
             sosmed={content.sosmed}
             warna={content.warna}
             paketHarga={content.paketHarga}
-            logo={content.logo}
+            logo={content.logo || website.logo_url}
             fotoBisnis={content.fotoBisnis}
-            portofolio={content.portofolio}
+            portofolio={content.portofolio || website.foto_urls}
             isEditable={false}
             isEditMode={false}
         />
@@ -56,6 +68,8 @@ export default async function SubdomainPage({ params }: SubdomainPageProps) {
 // Generate dynamic metadata for SEO
 export async function generateMetadata({ params }: SubdomainPageProps): Promise<Metadata> {
     const { subdomain } = await params
+    const supabase = getSupabase()
+
     const { data: website } = await supabase
         .from('websites')
         .select('generated_content, nama_usaha')
