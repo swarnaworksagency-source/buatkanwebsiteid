@@ -74,6 +74,10 @@ function BuatContent() {
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [deploySubdomain, setDeploySubdomain] = useState("");
   const [deployStatus, setDeployStatus] = useState<"idle" | "checking" | "available" | "unavailable" | "deploying" | "success" | "error">("idle");
+
+  // Save feedback state
+  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
+  const [websiteSubdomain, setWebsiteSubdomain] = useState<string | null>(null);
   const [deployError, setDeployError] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
@@ -268,6 +272,7 @@ function BuatContent() {
       });
       setOriginalContent(data.generated_content);
       setGeneratedWebsiteId(data.id);
+      setWebsiteSubdomain(data.subdomain || null);
       setStep(2); // Go to Visual step
     } catch (err) {
       console.error("Failed to load website", err);
@@ -683,12 +688,11 @@ function BuatContent() {
     if (!canProceed() || !idParam) return;
     
     if (!checkHasChanges()) {
-      alert("Tidak ada perubahan.");
       setShowSavePrompt(false);
       return;
     }
 
-    setIsLoading(true); setError("");
+    setIsLoading(true); setError(""); setSaveStatus("idle");
     setShowSavePrompt(false);
 
     try {
@@ -771,9 +775,15 @@ function BuatContent() {
 
       setTemplateData(updatedContent);
       setOriginalContent(finalDbContent); // Reset change detection
-      alert("Perubahan berhasil disimpan!");
+      setSaveStatus("success");
+
+      // Redirect ke dashboard setelah 2 detik
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 2000);
     } catch (err: any) {
-      setError(err.message || "Gagal menyimpan perubahan.");
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 4000);
     } finally {
       setIsLoading(false);
     }
@@ -1356,48 +1366,6 @@ function BuatContent() {
         </div>
       )}
 
-      {/* Save/Generate Prompt Dialog */}
-      {showSavePrompt && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl w-full max-w-sm shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
-            <h3 className="text-lg font-bold text-white mb-2">Nama Project Website</h3>
-            <p className="text-zinc-400 text-[13px] mb-5 leading-relaxed">
-              Beri nama project ini agar mudah dicari di Dashboard. Nama ini tidak akan terlihat oleh pelanggan Anda.
-            </p>
-            <div className="mb-6">
-              <input
-                type="text"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                placeholder="Contoh: Landing Page Promo"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    saveActionType === "generate" ? handleGenerate() : handleSaveUpdate();
-                  }
-                }}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-[14px] text-white focus:outline-none focus:border-indigo-500 transition-colors"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSavePrompt(false)}
-                className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-2.5 rounded-xl transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => saveActionType === "generate" ? handleGenerate() : handleSaveUpdate()}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl transition-colors cursor-pointer"
-              >
-                {saveActionType === "generate" ? "Generate" : "Simpan"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Deploy Modal */}
       {showDeployModal && (
@@ -1493,6 +1461,40 @@ function BuatContent() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ═══ SAVE SUCCESS OVERLAY ═══ */}
+      {saveStatus === 'success' && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-zinc-900 rounded-2xl p-8 text-center max-w-sm mx-4 shadow-xl border border-zinc-800 animate-scale-up">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-900/30 flex items-center justify-center">
+              <Check className="w-8 h-8 text-green-500" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-white">
+              Perubahan berhasil disimpan
+            </h3>
+            <p className="text-sm text-zinc-400">
+              Website kamu sudah diperbarui
+              {websiteSubdomain && (
+                <> dan bisa dilihat di{' '}
+                  <span className="font-medium text-zinc-300">
+                    {websiteSubdomain}.buatkanweb.id
+                  </span>
+                </>
+              )}
+            </p>
+            <p className="text-xs text-zinc-500 mt-4">
+              Mengalihkan ke dashboard...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ SAVE ERROR TOAST ═══ */}
+      {saveStatus === 'error' && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[120] bg-red-600 text-white px-6 py-3 rounded-xl shadow-lg animate-fade-in text-[13px] font-medium">
+          Gagal menyimpan. Coba lagi.
         </div>
       )}
     </div>
