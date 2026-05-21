@@ -314,6 +314,22 @@ function BuatContent() {
     setDeployStatus('deploying');
     try {
       const supabase = createClient();
+
+      // STEP 1: Simpan perubahan konten terbaru (termasuk inline edits) ke DB dulu
+      if (templateData) {
+        const latestContent = { ...templateData, __formData: formData };
+        const { error: contentError } = await supabase
+          .from('websites')
+          .update({ 
+            generated_content: latestContent,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', generatedWebsiteId);
+
+        if (contentError) throw contentError;
+      }
+
+      // STEP 2: Baru deploy (set subdomain + status active)
       const { error } = await supabase
         .from('websites')
         .update({ 
@@ -747,12 +763,14 @@ function BuatContent() {
           logo_url: logoUrl,
           foto_urls: portofolioUrls,
           generated_content: finalDbContent,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', idParam);
 
       if (dbError) throw dbError;
 
       setTemplateData(updatedContent);
+      setOriginalContent(finalDbContent); // Reset change detection
       alert("Perubahan berhasil disimpan!");
     } catch (err: any) {
       setError(err.message || "Gagal menyimpan perubahan.");
