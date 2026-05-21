@@ -255,6 +255,13 @@ function BuatContent() {
         logo: data.logo_url || "",
         portofolio: data.foto_urls || [],
       };
+
+      // Always override image fields with actual uploaded URLs from DB.
+      // The __formData may contain stale blob: URLs from the original form session.
+      loadedFormData.logo = data.logo_url || "";
+      loadedFormData.portofolio = data.foto_urls || [];
+      loadedFormData.fotoBisnis = data.generated_content?.fotoBisnis || [];
+
       setFormData(loadedFormData);
 
       setTemplateData({
@@ -322,7 +329,13 @@ function BuatContent() {
 
       // STEP 1: Simpan perubahan konten terbaru (termasuk inline edits) ke DB dulu
       if (templateData) {
-        const latestContent = { ...templateData, __formData: formData };
+        // Use clean uploaded URLs from templateData, not stale blob URLs from formData
+        const cleanFormData = {
+          ...formData,
+          logo: templateData.logo || formData.logo,
+          portofolio: templateData.portofolio || formData.portofolio,
+        };
+        const latestContent = { ...templateData, __formData: cleanFormData };
         const { error: contentError } = await supabase
           .from('websites')
           .update({ 
@@ -617,7 +630,7 @@ function BuatContent() {
         kategori: formData.kategoriJasa,
         logo_url: logoUrl,
         foto_urls: portofolioUrls,
-        generated_content: { ...finalData, __formData: formData },
+        generated_content: { ...finalData, __formData: { ...formData, logo: logoUrl, portofolio: portofolioUrls } },
         template_id: templateId,
         status: 'preview',
         expires_at: expiresAt.toISOString()
@@ -729,18 +742,28 @@ function BuatContent() {
         logoUrl = await uploadFile(optimizedLogo, 'logos');
       } else if (formData.logo && !formData.logo.startsWith('blob:')) {
         logoUrl = formData.logo;
+      } else if (templateData?.logo && !templateData.logo.startsWith('blob:')) {
+        // Fallback: use the existing logo from templateData (already uploaded URL)
+        logoUrl = templateData.logo;
       }
 
       // Parallelize portofolio uploads
-      const portofolioUploadPromises = formData.portofolio.map(async (url, i) => {
-        if (url.startsWith('blob:') && optimizedPortofolio[i]) {
-          return await uploadFile(optimizedPortofolio[i], 'portofolio');
-        } else if (!url.startsWith('blob:')) {
-          return url;
-        }
-        return "";
-      });
-      const portofolioUrls = (await Promise.all(portofolioUploadPromises)).filter(url => url !== "");
+      let portofolioUrls: string[] = [];
+      if (formData.portofolio.length > 0) {
+        const portofolioUploadPromises = formData.portofolio.map(async (url, i) => {
+          if (url.startsWith('blob:') && optimizedPortofolio[i]) {
+            return await uploadFile(optimizedPortofolio[i], 'portofolio');
+          } else if (!url.startsWith('blob:')) {
+            return url;
+          }
+          return "";
+        });
+        portofolioUrls = (await Promise.all(portofolioUploadPromises)).filter(url => url !== "");
+      }
+      // Fallback: if all portofolio URLs were stale blobs with no File objects, keep existing ones
+      if (portofolioUrls.length === 0 && templateData?.portofolio && templateData.portofolio.length > 0) {
+        portofolioUrls = templateData.portofolio.filter(url => !url.startsWith('blob:'));
+      }
 
       // Merge current templateData with new formData
       const updatedContent: TemplateData = {
@@ -756,7 +779,13 @@ function BuatContent() {
         portofolio: portofolioUrls,
       };
 
-      const finalDbContent = { ...updatedContent, __formData: formData };
+      // Save clean URLs in __formData so next load won't have stale blob URLs
+      const cleanFormData = {
+        ...formData,
+        logo: logoUrl,
+        portofolio: portofolioUrls,
+      };
+      const finalDbContent = { ...updatedContent, __formData: cleanFormData };
 
       const { error: dbError } = await supabase
         .from('websites')
