@@ -385,7 +385,6 @@ function BuatContent() {
       setDeployError(err.message || "Gagal memulai pembayaran. Coba lagi.");
     } finally {
       setPaymentLoading(false);
-      setDeployStatus('available');
     }
   };
 
@@ -395,12 +394,14 @@ function BuatContent() {
     setDeployStatus('deploying');
     try {
       const supabase = createClient();
-      const { data: existingPayment } = await supabase
+      const { data: existingPayment, error } = await supabase
         .from('payments')
         .select('id, status')
         .eq('website_id', generatedWebsiteId)
         .eq('status', 'paid')
         .maybeSingle();
+
+      if (error) throw error;
 
       if (existingPayment) {
         await deployWebsite(deploySubdomain, generatedWebsiteId);
@@ -1542,7 +1543,7 @@ function BuatContent() {
                   <div className="mt-2 text-[12px] h-4">
                     {deployStatus === 'checking' && <span className="text-zinc-400 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Mengecek ketersediaan...</span>}
                     {deployStatus === 'available' && <span className="text-emerald-400 flex items-center gap-1"><Check className="w-3 h-3" /> Subdomain tersedia!</span>}
-                    {deployStatus === 'unavailable' && <span className="text-red-400 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {deployError}</span>}
+                    {(deployStatus === 'unavailable' || deployStatus === 'error') && <span className="text-red-400 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {deployError}</span>}
                   </div>
                 </div>
 

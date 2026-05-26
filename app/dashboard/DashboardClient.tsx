@@ -126,6 +126,39 @@ export default function DashboardClient({
     const [paymentInfo, setPaymentInfo] = useState<{harga: number, isEarlyAdopter: boolean} | null>(null)
     const [showPaymentModal, setShowPaymentModal] = useState(false)
 
+    // Pending Payments State
+    const [pendingPayments, setPendingPayments] = useState<any[]>([])
+    const [continueLoading, setContinueLoading] = useState<string|null>(null)
+    const [showCancelModal, setShowCancelModal] = useState<{paymentId: string, websiteId: string} | null>(null)
+    const [cancelLoading, setCancelLoading] = useState(false)
+
+    const fetchDashboardData = useCallback(async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data } = await supabase
+            .from('payments')
+            .select('*, websites(id, nama_usaha, subdomain)')
+            .eq('user_id', user.id)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+        
+        if (data) setPendingPayments(data)
+    }, [supabase])
+
+    useEffect(() => {
+        fetchDashboardData()
+        
+        if (!document.getElementById('midtrans-snap')) {
+            const script = document.createElement('script')
+            script.id = 'midtrans-snap'
+            script.src = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true'
+                ? 'https://app.midtrans.com/snap/snap.js'
+                : 'https://app.sandbox.midtrans.com/snap/snap.js'
+            script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '')
+            document.head.appendChild(script)
+        }
+    }, [fetchDashboardData])
+
     const handleDelete = async (websiteId: string) => {
         setIsDeleting(true)
         try {
@@ -169,13 +202,15 @@ export default function DashboardClient({
                 .delete()
                 .eq('website_id', websiteId)
             
-            // 3. Hapus website dari database
-            await supabase
-                .from('websites')
-                .delete()
-                .eq('id', websiteId)
-            
-            // 4. Update UI
+            // 2. Hapus website dan payment dari database menggunakan API backend
+            const res = await fetch('/api/website/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ websiteId })
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Failed to delete website')
+
             setDeletingWebsite(null)
             router.refresh()
             
@@ -272,9 +307,9 @@ export default function DashboardClient({
             setToast(`Website berhasil di-deploy! Akses di ${subdomain}.${MAIN_DOMAIN}`)
             setTimeout(() => setToast(''), 5000)
             router.refresh()
-        } catch (err) {
+        } catch (err: any) {
             console.error('Deploy failed:', err)
-            setSubdomainError('Gagal deploy. Coba lagi.')
+            setSubdomainError(err.message || 'Gagal deploy. Coba lagi.')
         } finally {
             setIsDeploying(false)
         }
@@ -283,7 +318,6 @@ export default function DashboardClient({
     const startPayment = async (subdomain: string, websiteId: string) => {
         setPaymentLoading(true)
         try {
-            setPendingSubdomain(subdomain)
             const res = await fetch('/api/payment/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -294,13 +328,14 @@ export default function DashboardClient({
             
             setSnapToken(data.snap_token)
             setPaymentInfo({ harga: data.harga, isEarlyAdopter: data.isEarlyAdopter })
+            setPendingSubdomain(subdomain)
             setShowPaymentModal(true)
-        } catch (err) {
-            console.error(err)
-            setToast('Gagal memulai pembayaran. Coba lagi.')
-            setTimeout(() => setToast(''), 3000)
+        } catch (err: any) {
+            console.error('Start payment error:', err)
+            setSubdomainError(err.message || 'Gagal memulai pembayaran.')
         } finally {
             setPaymentLoading(false)
+            setIsDeploying(false)
         }
     }
 
@@ -308,52 +343,126 @@ export default function DashboardClient({
         if (!deployingWebsite || !subdomainInput || !subdomainAvailable) return
         setIsDeploying(true)
         try {
-            const { data: existingPayment } = await supabase
+            const { data: existingPayment, error } = await supabase
                 .from('payments')
                 .select('id, status')
                 .eq('website_id', deployingWebsite.id)
                 .eq('status', 'paid')
                 .maybeSingle()
             
+            if (error) throw error;
+
             if (existingPayment) {
                 await deployWebsite(subdomainInput, deployingWebsite.id)
             } else {
                 await startPayment(subdomainInput, deployingWebsite.id)
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Check payment failed:', err)
-            setSubdomainError('Gagal memeriksa pembayaran. Coba lagi.')
-        } finally {
+            setSubdomainStatus('error')
+            setSubdomainError(err.message || 'Gagal memeriksa pembayaran.')
             setIsDeploying(false)
         }
     }
 
     const handleBayarSekarang = () => {
-        const script = document.createElement('script')
-        script.src = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true' 
-            ? 'https://app.midtrans.com/snap/snap.js'
-            : 'https://app.sandbox.midtrans.com/snap/snap.js'
-        script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '')
-        document.head.appendChild(script)
-
-        script.onload = () => {
+        if (window.snap) {
             window.snap.pay(snapToken, {
                 onSuccess: async (result: any) => {
                     await deployWebsite(pendingSubdomain, deployingWebsite!.id)
                     setShowPaymentModal(false)
+                    fetchDashboardData()
                 },
                 onPending: (result: any) => {
                     setToast('Pembayaran pending. Website akan aktif setelah konfirmasi.')
                     setShowPaymentModal(false)
                     closeDeployModal()
+                    fetchDashboardData()
                 },
                 onError: (result: any) => {
                     setToast('Pembayaran gagal. Silakan coba lagi.')
                 },
                 onClose: () => {
-                    // User tutup popup tanpa bayar
+                    fetchDashboardData()
                 }
             })
+        } else {
+            setToast('Gagal memuat script pembayaran. Silakan refresh halaman.')
+        }
+    }
+
+    const handleContinuePayment = async (payment: any) => {
+        setContinueLoading(payment.id)
+        try {
+            let currentSnapToken = payment.snap_token
+
+            if (!currentSnapToken) {
+                const res = await fetch('/api/payment/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        websiteId: payment.website_id,
+                        existingOrderId: payment.order_id
+                    })
+                })
+                const data = await res.json()
+                if (!res.ok) throw new Error(data.error || 'Failed to recreate payment')
+                
+                currentSnapToken = data.snap_token
+                await supabase
+                    .from('payments')
+                    .update({ snap_token: currentSnapToken })
+                    .eq('id', payment.id)
+            }
+
+            if (window.snap) {
+                window.snap.pay(currentSnapToken, {
+                    onSuccess: async () => {
+                        await fetchDashboardData()
+                        router.refresh()
+                        setToast('Pembayaran berhasil! Website kamu sudah aktif.')
+                    },
+                    onPending: () => {
+                        setToast('Pembayaran masih pending. Tunggu konfirmasi.')
+                    },
+                    onError: () => {
+                        setToast('Pembayaran gagal. Silakan coba lagi.')
+                    },
+                    onClose: () => {}
+                })
+            } else {
+                setToast('Sistem pembayaran belum siap. Silakan coba lagi.')
+            }
+        } catch (err) {
+            setToast('Gagal memuat pembayaran. Coba lagi.')
+        } finally {
+            setContinueLoading(null)
+        }
+    }
+
+    const handleCancelPayment = (paymentId: string, websiteId: string) => {
+        setShowCancelModal({ paymentId, websiteId })
+    }
+
+    const confirmCancelPayment = async (paymentId: string, websiteId: string) => {
+        setCancelLoading(true)
+        try {
+            const res = await fetch('/api/payment/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paymentId })
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Failed to cancel payment')
+
+            await fetchDashboardData()
+            setShowCancelModal(null)
+            setToast('Pembayaran berhasil dibatalkan.')
+        } catch (err: any) {
+            console.error('Cancel payment error:', err)
+            setToast(`Gagal membatalkan: ${err.message}`)
+        } finally {
+            setCancelLoading(false)
         }
     }
 
@@ -381,6 +490,17 @@ export default function DashboardClient({
         }
         document.addEventListener('mousedown', handleClick)
         return () => document.removeEventListener('mousedown', handleClick)
+    }, [])
+
+    useEffect(() => {
+        const script = document.createElement('script')
+        script.src = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true' 
+            ? 'https://app.midtrans.com/snap/snap.js'
+            : 'https://app.sandbox.midtrans.com/snap/snap.js'
+        script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '')
+        script.async = true
+        document.head.appendChild(script)
+        return () => { document.head.removeChild(script) }
     }, [])
 
     const handleSignOut = async () => {
@@ -412,6 +532,37 @@ export default function DashboardClient({
                     }}
                 />
             </div>
+            
+            {/* ═══ CANCEL PAYMENT MODAL ═══ */}
+            {showCancelModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowCancelModal(null)} />
+                    <div className="relative bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-sm w-full animate-in zoom-in-95 duration-200">
+                        <h3 className="text-white font-semibold text-[16px] mb-2">
+                            Batalkan Pembayaran?
+                        </h3>
+                        <p className="text-zinc-400 text-[14px] mb-6 leading-relaxed">
+                            Pembayaran yang dibatalkan tidak bisa dilanjutkan. Kamu perlu membayar ulang jika ingin deploy website ini nanti.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowCancelModal(null)}
+                                className="flex-1 py-2.5 rounded-xl border border-zinc-700 text-zinc-300 text-[14px] hover:border-zinc-600 transition-colors font-medium"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                onClick={() => confirmCancelPayment(showCancelModal.paymentId, showCancelModal.websiteId)}
+                                disabled={cancelLoading}
+                                className="flex-1 py-2.5 rounded-xl bg-red-600/90 hover:bg-red-600 text-white text-[14px] font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {cancelLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Ya, Batalkan'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ═══ HEADER ═══ */}
             <header className="sticky top-0 z-50 bg-[#0D0D0D]/80 backdrop-blur-xl border-b border-white/5">
                 <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
@@ -511,6 +662,55 @@ export default function DashboardClient({
                         <p className="text-white text-3xl font-extrabold tracking-tight">{activeWebsites}</p>
                     </div>
                 </div>
+
+                {/* ═══ PENDING PAYMENTS BANNER ═══ */}
+                {pendingPayments && pendingPayments.length > 0 && (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 mb-8 sm:mb-10">
+                    <div className="flex items-start gap-3">
+                      <Clock className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-amber-300 font-semibold text-[14px]">
+                          {pendingPayments.length} pembayaran menunggu diselesaikan
+                        </p>
+                        <p className="text-amber-400/70 text-[13px] mt-0.5">
+                          Selesaikan pembayaran untuk mengaktifkan website kamu.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 space-y-2">
+                      {pendingPayments.map(payment => (
+                        <div key={payment.id} 
+                          className="flex flex-col sm:flex-row sm:items-center justify-between bg-amber-500/10 rounded-lg px-4 py-3 gap-3 border border-amber-500/20">
+                          <div className="min-w-0">
+                            <p className="text-white text-[14px] font-medium truncate">
+                              {payment.websites?.nama_usaha || payment.websites?.subdomain || 'Website'}
+                            </p>
+                            <p className="text-amber-400/60 text-[12px] mt-0.5">
+                              Rp{payment.harga?.toLocaleString('id-ID')} &middot; Order #{payment.order_id?.split('-').pop()}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onClick={() => handleCancelPayment(payment.id, payment.website_id)}
+                              className="text-[13px] text-amber-400/70 hover:text-red-400 px-3 py-2 transition-colors font-medium"
+                            >
+                              Batalkan
+                            </button>
+                            <button
+                              onClick={() => handleContinuePayment(payment)}
+                              disabled={continueLoading === payment.id}
+                              className="text-[13px] font-bold bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-[#18181b] px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                            >
+                              {continueLoading === payment.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                              Lanjutkan Bayar
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* ═══ CTA BUTTON ═══ */}
                 <div className="mb-10 sm:mb-12">

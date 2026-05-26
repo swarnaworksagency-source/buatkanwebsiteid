@@ -37,7 +37,7 @@ const DUMMY_DATA: TemplateData = {
     },
     warna: {
         primary: '#4f46e5',
-        tema: 'light'
+        tema: 'dark'
     },
     logo: '',
     fotoBisnis: [],

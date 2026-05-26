@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       .single();
 
     if (websiteError || !website) {
-      return NextResponse.json({ error: 'Website not found or not owned by user' }, { status: 404 });
+      return NextResponse.json({ error: `Website tidak ditemukan: ${websiteError?.message || 'Not Found'}` }, { status: 404 });
     }
 
     // Cek apakah user termasuk early adopter
@@ -58,15 +58,17 @@ export async function POST(request: Request) {
       .eq('status', 'active');
 
     if (countError) {
-      return NextResponse.json({ error: 'Failed to query active websites count' }, { status: 500 });
+      return NextResponse.json({ error: `Gagal cek kuota early adopter: ${countError.message}` }, { status: 500 });
     }
 
     const activeCount = count || 0;
     const isEarlyAdopter = activeCount < 75;
     const harga = isEarlyAdopter ? 99000 : 199000;
 
-    // Generate order_id unik
-    const orderId = `BWI-${websiteId}-${Date.now()}`;
+    // Generate order_id unik (maks 50 karakter untuk Midtrans)
+    // UUID (36) + timestamp (13) + prefix terlalu panjang.
+    // Kita ambil 8 karakter pertama dari websiteId + timestamp.
+    const orderId = `BWI-${websiteId.substring(0, 8)}-${Date.now()}`;
 
     // Buat transaksi Midtrans Snap
     const snap = new midtransClient.Snap({
@@ -105,15 +107,16 @@ export async function POST(request: Request) {
         user_id: user.id,
         website_id: websiteId,
         order_id: orderId,
+        paket: isEarlyAdopter ? 'Subdomain (Early Adopter)' : 'Subdomain 1 Tahun',
         snap_token: transaction.token,
-        gross_amount: harga,
+        harga: harga,
         status: 'pending',
         midtrans_status: 'pending',
       });
 
     if (insertError) {
       console.error('Payment insert error:', insertError);
-      return NextResponse.json({ error: 'Failed to save payment record' }, { status: 500 });
+      return NextResponse.json({ error: `Gagal menyimpan ke tabel payments: ${insertError.message}` }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -125,6 +128,6 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error('Payment create error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: `Server error: ${error.message || 'Unknown'}` }, { status: 500 });
   }
 }
