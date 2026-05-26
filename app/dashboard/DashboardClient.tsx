@@ -359,7 +359,6 @@ export default function DashboardClient({
             }
         } catch (err: any) {
             console.error('Check payment failed:', err)
-            setSubdomainStatus('error')
             setSubdomainError(err.message || 'Gagal memeriksa pembayaran.')
             setIsDeploying(false)
         }
