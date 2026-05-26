@@ -80,6 +80,13 @@ function BuatContent() {
   const [websiteSubdomain, setWebsiteSubdomain] = useState<string | null>(null);
   const [deployError, setDeployError] = useState("");
 
+  // Payment State
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [snapToken, setSnapToken] = useState('');
+  const [paymentInfo, setPaymentInfo] = useState<{harga: number, isEarlyAdopter: boolean} | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const MAIN_DOMAIN = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'buatkanweb.id';
+
   const [isLoading, setIsLoading] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -320,16 +327,12 @@ function BuatContent() {
     return () => clearTimeout(timer);
   }, [deploySubdomain, showDeployModal]);
 
-  const handleDeploy = async () => {
-    if (deployStatus !== 'available' || !generatedWebsiteId) return;
-    
+  const deployWebsite = async (subdomain: string, websiteId: string) => {
     setDeployStatus('deploying');
     try {
       const supabase = createClient();
 
-      // STEP 1: Simpan perubahan konten terbaru (termasuk inline edits) ke DB dulu
       if (templateData) {
-        // Use clean uploaded URLs from templateData, not stale blob URLs from formData
         const cleanFormData = {
           ...formData,
           logo: templateData.logo || formData.logo,
@@ -342,19 +345,18 @@ function BuatContent() {
             generated_content: latestContent,
             updated_at: new Date().toISOString()
           })
-          .eq('id', generatedWebsiteId);
+          .eq('id', websiteId);
 
         if (contentError) throw contentError;
       }
 
-      // STEP 2: Baru deploy (set subdomain + status active)
       const { error } = await supabase
         .from('websites')
         .update({ 
-          subdomain: deploySubdomain,
+          subdomain,
           status: 'active'
         })
-        .eq('id', generatedWebsiteId);
+        .eq('id', websiteId);
 
       if (error) throw error;
       setDeployStatus('success');
@@ -362,6 +364,82 @@ function BuatContent() {
       setDeployStatus('error');
       setDeployError(err.message || "Gagal deploy website");
     }
+  };
+
+  const startPayment = async (subdomain: string, websiteId: string) => {
+    setPaymentLoading(true);
+    try {
+      const res = await fetch('/api/payment/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ websiteId })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create payment');
+      
+      setSnapToken(data.snap_token);
+      setPaymentInfo({ harga: data.harga, isEarlyAdopter: data.isEarlyAdopter });
+      setShowPaymentModal(true);
+    } catch (err: any) {
+      setDeployStatus('error');
+      setDeployError(err.message || "Gagal memulai pembayaran. Coba lagi.");
+    } finally {
+      setPaymentLoading(false);
+      setDeployStatus('available');
+    }
+  };
+
+  const handleDeploy = async () => {
+    if (deployStatus !== 'available' || !generatedWebsiteId) return;
+    
+    setDeployStatus('deploying');
+    try {
+      const supabase = createClient();
+      const { data: existingPayment } = await supabase
+        .from('payments')
+        .select('id, status')
+        .eq('website_id', generatedWebsiteId)
+        .eq('status', 'paid')
+        .maybeSingle();
+
+      if (existingPayment) {
+        await deployWebsite(deploySubdomain, generatedWebsiteId);
+      } else {
+        await startPayment(deploySubdomain, generatedWebsiteId);
+      }
+    } catch (err: any) {
+      setDeployStatus('error');
+      setDeployError(err.message || "Gagal memeriksa pembayaran");
+    }
+  };
+
+  const handleBayarSekarang = () => {
+    const script = document.createElement('script');
+    script.src = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true' 
+        ? 'https://app.midtrans.com/snap/snap.js'
+        : 'https://app.sandbox.midtrans.com/snap/snap.js';
+    script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '');
+    document.head.appendChild(script);
+
+    script.onload = () => {
+      window.snap.pay(snapToken, {
+        onSuccess: async (result: any) => {
+          await deployWebsite(deploySubdomain, generatedWebsiteId!);
+          setShowPaymentModal(false);
+        },
+        onPending: (result: any) => {
+          setShowPaymentModal(false);
+          setShowDeployModal(false);
+          alert('Pembayaran pending. Website akan aktif setelah konfirmasi.');
+        },
+        onError: (result: any) => {
+          alert('Pembayaran gagal. Silakan coba lagi.');
+        },
+        onClose: () => {
+          // User tutup popup tanpa bayar
+        }
+      });
+    };
   };
 
   const updateField = useCallback(
@@ -1491,6 +1569,70 @@ function BuatContent() {
             )}
           </div>
         </div>
+      )}
+
+      {/* ═══ PAYMENT MODAL ═══ */}
+      {showPaymentModal && paymentInfo && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowPaymentModal(false)} />
+              <div className="relative w-full max-w-md bg-[#18181b] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                  <div className="px-6 pt-6 pb-4 border-b border-zinc-800">
+                      <h3 className="text-white font-bold text-[18px]">Ringkasan Pembayaran</h3>
+                  </div>
+                  <div className="p-6">
+                      <div className="space-y-4 mb-6">
+                          <div className="flex justify-between items-center pb-4 border-b border-zinc-800">
+                              <span className="text-zinc-400 text-[13px]">Website</span>
+                              <span className="text-white font-medium text-[14px]">{projectName || formData.namaBisnis || "Website Baru"}</span>
+                          </div>
+                          <div className="flex justify-between items-center pb-4 border-b border-zinc-800">
+                              <span className="text-zinc-400 text-[13px]">Subdomain</span>
+                              <span className="text-[#67BAF4] font-medium text-[14px]">{deploySubdomain}.{MAIN_DOMAIN}</span>
+                          </div>
+                          <div className="flex justify-between items-center pb-4 border-b border-zinc-800">
+                              <span className="text-zinc-400 text-[13px]">Paket</span>
+                              <span className="text-white font-medium text-[14px]">Subdomain 1 Tahun</span>
+                          </div>
+                          
+                          <div className="pt-2">
+                              {paymentInfo.isEarlyAdopter && (
+                                  <div className="mb-3 flex items-center gap-2 bg-emerald-500/10 text-emerald-400 text-[12px] font-medium px-3 py-2 rounded-lg border border-emerald-500/20">
+                                      <span>🎉</span> Kamu termasuk 75 early adopter!
+                                  </div>
+                              )}
+                              <div className="flex justify-between items-end">
+                                  <span className="text-zinc-300 font-medium">Total Harga</span>
+                                  <div className="text-right">
+                                      {paymentInfo.isEarlyAdopter && (
+                                          <div className="text-zinc-500 line-through text-[13px] mb-1">
+                                              Rp199.000
+                                          </div>
+                                      )}
+                                      <div className="text-2xl font-bold text-white">
+                                          Rp{paymentInfo.harga.toLocaleString('id-ID')}
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                          <button
+                              onClick={() => setShowPaymentModal(false)}
+                              className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-3 rounded-xl transition-colors cursor-pointer"
+                          >
+                              Batal
+                          </button>
+                          <button
+                              onClick={handleBayarSekarang}
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 rounded-xl transition-colors shadow-lg shadow-emerald-600/20 cursor-pointer"
+                          >
+                              Bayar Sekarang
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
       )}
 
       {/* ═══ SAVE SUCCESS OVERLAY ═══ */}

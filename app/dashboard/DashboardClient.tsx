@@ -6,6 +6,14 @@ import { useRouter } from 'next/navigation'
 import { LogOut, Plus, Eye, RefreshCw, Clock, Globe, Trash2, Loader2, Edit2, Check, X, Rocket, ExternalLink, AlertCircle, CheckCircle2, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 
+declare global {
+  interface Window {
+    snap: {
+      pay: (token: string, options: object) => void
+    }
+  }
+}
+
 const MAIN_DOMAIN = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'buatkanweb.id'
 
 const RESERVED_SUBDOMAINS = [
@@ -110,6 +118,13 @@ export default function DashboardClient({
     const [deploySuccess, setDeploySuccess] = useState<{ subdomain: string; url: string } | null>(null)
     const [toast, setToast] = useState('')
     const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+    // Payment State
+    const [paymentLoading, setPaymentLoading] = useState(false)
+    const [pendingSubdomain, setPendingSubdomain] = useState('')
+    const [snapToken, setSnapToken] = useState('')
+    const [paymentInfo, setPaymentInfo] = useState<{harga: number, isEarlyAdopter: boolean} | null>(null)
+    const [showPaymentModal, setShowPaymentModal] = useState(false)
 
     const handleDelete = async (websiteId: string) => {
         setIsDeleting(true)
@@ -244,18 +259,17 @@ export default function DashboardClient({
         }
     }, [validateSubdomainLocal, checkSubdomainAvailability])
 
-    const handleDeploy = async () => {
-        if (!deployingWebsite || !subdomainInput || !subdomainAvailable) return
+    const deployWebsite = async (subdomain: string, websiteId: string) => {
         setIsDeploying(true)
         try {
             const { error } = await supabase
                 .from('websites')
-                .update({ subdomain: subdomainInput, status: 'active' })
-                .eq('id', deployingWebsite.id)
+                .update({ subdomain, status: 'active' })
+                .eq('id', websiteId)
             if (error) throw error
-            const url = `https://${subdomainInput}.${MAIN_DOMAIN}`
-            setDeploySuccess({ subdomain: subdomainInput, url })
-            setToast(`Website berhasil di-deploy! Akses di ${subdomainInput}.${MAIN_DOMAIN}`)
+            const url = `https://${subdomain}.${MAIN_DOMAIN}`
+            setDeploySuccess({ subdomain, url })
+            setToast(`Website berhasil di-deploy! Akses di ${subdomain}.${MAIN_DOMAIN}`)
             setTimeout(() => setToast(''), 5000)
             router.refresh()
         } catch (err) {
@@ -263,6 +277,83 @@ export default function DashboardClient({
             setSubdomainError('Gagal deploy. Coba lagi.')
         } finally {
             setIsDeploying(false)
+        }
+    }
+
+    const startPayment = async (subdomain: string, websiteId: string) => {
+        setPaymentLoading(true)
+        try {
+            setPendingSubdomain(subdomain)
+            const res = await fetch('/api/payment/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ websiteId })
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Failed to create payment')
+            
+            setSnapToken(data.snap_token)
+            setPaymentInfo({ harga: data.harga, isEarlyAdopter: data.isEarlyAdopter })
+            setShowPaymentModal(true)
+        } catch (err) {
+            console.error(err)
+            setToast('Gagal memulai pembayaran. Coba lagi.')
+            setTimeout(() => setToast(''), 3000)
+        } finally {
+            setPaymentLoading(false)
+        }
+    }
+
+    const handleDeploy = async () => {
+        if (!deployingWebsite || !subdomainInput || !subdomainAvailable) return
+        setIsDeploying(true)
+        try {
+            const { data: existingPayment } = await supabase
+                .from('payments')
+                .select('id, status')
+                .eq('website_id', deployingWebsite.id)
+                .eq('status', 'paid')
+                .maybeSingle()
+            
+            if (existingPayment) {
+                await deployWebsite(subdomainInput, deployingWebsite.id)
+            } else {
+                await startPayment(subdomainInput, deployingWebsite.id)
+            }
+        } catch (err) {
+            console.error('Check payment failed:', err)
+            setSubdomainError('Gagal memeriksa pembayaran. Coba lagi.')
+        } finally {
+            setIsDeploying(false)
+        }
+    }
+
+    const handleBayarSekarang = () => {
+        const script = document.createElement('script')
+        script.src = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true' 
+            ? 'https://app.midtrans.com/snap/snap.js'
+            : 'https://app.sandbox.midtrans.com/snap/snap.js'
+        script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '')
+        document.head.appendChild(script)
+
+        script.onload = () => {
+            window.snap.pay(snapToken, {
+                onSuccess: async (result: any) => {
+                    await deployWebsite(pendingSubdomain, deployingWebsite!.id)
+                    setShowPaymentModal(false)
+                },
+                onPending: (result: any) => {
+                    setToast('Pembayaran pending. Website akan aktif setelah konfirmasi.')
+                    setShowPaymentModal(false)
+                    closeDeployModal()
+                },
+                onError: (result: any) => {
+                    setToast('Pembayaran gagal. Silakan coba lagi.')
+                },
+                onClose: () => {
+                    // User tutup popup tanpa bayar
+                }
+            })
         }
     }
 
@@ -847,6 +938,70 @@ export default function DashboardClient({
                                     </button>
                                 </>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ═══ PAYMENT MODAL ═══ */}
+            {showPaymentModal && deployingWebsite && paymentInfo && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowPaymentModal(false)} />
+                    <div className="relative w-full max-w-md bg-[#18181b] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-6 pt-6 pb-4 border-b border-zinc-800">
+                            <h3 className="text-white font-bold text-[18px]">Ringkasan Pembayaran</h3>
+                        </div>
+                        <div className="p-6">
+                            <div className="space-y-4 mb-6">
+                                <div className="flex justify-between items-center pb-4 border-b border-zinc-800">
+                                    <span className="text-zinc-400 text-[13px]">Website</span>
+                                    <span className="text-white font-medium text-[14px]">{deployingWebsite.nama_bisnis}</span>
+                                </div>
+                                <div className="flex justify-between items-center pb-4 border-b border-zinc-800">
+                                    <span className="text-zinc-400 text-[13px]">Subdomain</span>
+                                    <span className="text-[#67BAF4] font-medium text-[14px]">{pendingSubdomain}.{MAIN_DOMAIN}</span>
+                                </div>
+                                <div className="flex justify-between items-center pb-4 border-b border-zinc-800">
+                                    <span className="text-zinc-400 text-[13px]">Paket</span>
+                                    <span className="text-white font-medium text-[14px]">Subdomain 1 Tahun</span>
+                                </div>
+                                
+                                <div className="pt-2">
+                                    {paymentInfo.isEarlyAdopter && (
+                                        <div className="mb-3 flex items-center gap-2 bg-emerald-500/10 text-emerald-400 text-[12px] font-medium px-3 py-2 rounded-lg border border-emerald-500/20">
+                                            <span>🎉</span> Kamu termasuk 75 early adopter!
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between items-end">
+                                        <span className="text-zinc-300 font-medium">Total Harga</span>
+                                        <div className="text-right">
+                                            {paymentInfo.isEarlyAdopter && (
+                                                <div className="text-zinc-500 line-through text-[13px] mb-1">
+                                                    Rp199.000
+                                                </div>
+                                            )}
+                                            <div className="text-2xl font-bold text-white">
+                                                Rp{paymentInfo.harga.toLocaleString('id-ID')}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowPaymentModal(false)}
+                                    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-3 rounded-xl transition-colors cursor-pointer"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    onClick={handleBayarSekarang}
+                                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 rounded-xl transition-colors shadow-lg shadow-emerald-600/20 cursor-pointer"
+                                >
+                                    Bayar Sekarang
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

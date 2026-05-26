@@ -51,11 +51,24 @@ export default function RegisterPage() {
         setLoading(false)
     }
 
+    const getRedirectUrl = () => {
+        if (typeof window !== 'undefined') {
+            return `${window.location.origin}/auth/callback`
+        }
+        return `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+    }
+
     const handleGoogleRegister = async () => {
         setGoogleLoading(true)
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
-            options: { redirectTo: `${window.location.origin}/auth/callback` },
+            options: { 
+                redirectTo: getRedirectUrl(),
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'consent',
+                }
+            },
         })
         if (error) { setError('Gagal daftar dengan Google.'); setGoogleLoading(false) }
     }
