@@ -1,3 +1,4 @@
+// Dashboard Client Component
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
