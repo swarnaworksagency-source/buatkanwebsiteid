@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { safeStorage } from '@/lib/storage'
-import TemplateSatu from '@/components/templates/TemplateSatu'
+import TemplateSatu from '@/components/templates/jasa/TemplateSatu'
 import type { TemplateData } from '@/types'
 
 export default function PreviewClient({ 

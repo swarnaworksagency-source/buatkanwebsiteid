@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { TemplateData, FormData, PaketHarga } from "@/types";
-import TemplateSatu from "@/components/templates/TemplateSatu";
+import TemplateSatu from "@/components/templates/jasa/TemplateSatu";
 import { createClient } from "@/lib/supabase";
 import { convertToWebP, convertAllToWebP } from "@/lib/imageUtils";
 import { SearchableCombobox } from "@/components/ui/SearchableCombobox";

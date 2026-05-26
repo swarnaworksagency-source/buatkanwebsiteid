@@ -99,6 +99,12 @@ export interface TemplateData {
     email: string;
   };
   
+  portofolioPositions?: Array<{
+    x: number;
+    y: number;
+    scale: number;
+  }>;
+  
   sosmed: {
     instagram: string;
     tiktok: string;

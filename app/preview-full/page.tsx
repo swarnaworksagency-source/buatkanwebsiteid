@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { TemplateData } from "@/types";
-import TemplateSatu from "@/components/templates/TemplateSatu";
+import TemplateSatu from "@/components/templates/jasa/TemplateSatu";
 import { Loader2 } from "lucide-react";
 import { safeStorage } from "@/lib/storage";
 

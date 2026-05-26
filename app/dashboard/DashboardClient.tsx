@@ -96,7 +96,8 @@ export default function DashboardClient({
     const quotaExhausted = quotaLeft <= 0
     const limitReached = totalWebsites >= 6
 
-    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+    const [deletingWebsite, setDeletingWebsite] = useState<Website | null>(null)
+    const [deleteChecked, setDeleteChecked] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
 
     // Deploy state
@@ -110,16 +111,66 @@ export default function DashboardClient({
     const [toast, setToast] = useState('')
     const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-    const handleDeleteWebsite = async (id: string) => {
+    const handleDelete = async (websiteId: string) => {
         setIsDeleting(true)
         try {
-            const { error } = await supabase.from('websites').delete().eq('id', id)
-            if (error) throw error
-            setDeleteConfirmId(null)
+            const supabase = createClient()
+            
+            // 1. Ambil data website dulu untuk dapat URL foto
+            const { data: website } = await supabase
+                .from('websites')
+                .select('logo_url, foto_urls, generated_content')
+                .eq('id', websiteId)
+                .single()
+            
+            // Kumpulkan semua file path dari Storage
+            const storageFiles = []
+            if (website?.logo_url) {
+                const path = website.logo_url.split('/website-assets/')[1]
+                if (path) storageFiles.push(path)
+            }
+            if (website?.foto_urls?.length > 0) {
+                website?.foto_urls?.forEach((url: string) => {
+                    const path = url.split('/website-assets/')[1]
+                    if (path) storageFiles.push(path)
+                })
+            }
+            const portofolio = website?.generated_content?.portofolio || []
+            portofolio.forEach((url: string) => {
+                const path = url.split('/website-assets/')[1]
+                if (path) storageFiles.push(path)
+            })
+            
+            // Hapus dari Storage jika ada
+            if (storageFiles.length > 0) {
+                await supabase.storage
+                    .from('website-assets')
+                    .remove(storageFiles)
+            }
+            
+            // 2. Hapus generate_logs terkait
+            await supabase
+                .from('generate_logs')
+                .delete()
+                .eq('website_id', websiteId)
+            
+            // 3. Hapus website dari database
+            await supabase
+                .from('websites')
+                .delete()
+                .eq('id', websiteId)
+            
+            // 4. Update UI
+            setDeletingWebsite(null)
             router.refresh()
+            
+            setToast("Website berhasil dihapus.")
+            setTimeout(() => setToast(""), 3000)
+            
         } catch (err) {
             console.error(err)
-            alert("Gagal menghapus website")
+            setToast("Gagal menghapus. Coba lagi.")
+            setTimeout(() => setToast(""), 3000)
         } finally {
             setIsDeleting(false)
         }
@@ -447,37 +498,6 @@ export default function DashboardClient({
                                           backgroundColor: '#0a0a0a',
                                           borderBottom: '1px solid rgba(255,255,255,0.05)'
                                         }}>
-                                          {site.status === 'preview' && (
-                                              <button
-                                                  onClick={(e) => { e.preventDefault(); setDeleteConfirmId(site.id) }}
-                                                  className="absolute top-3 right-3 z-20 w-8 h-8 bg-black/60 hover:bg-red-500/80 backdrop-blur-md rounded-full flex items-center justify-center text-zinc-300 hover:text-white transition-all duration-200"
-                                              >
-                                                  <Trash2 className="w-4 h-4" />
-                                              </button>
-                                          )}
-                                          
-                                          {deleteConfirmId === site.id && (
-                                              <div className="absolute inset-0 z-30 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center">
-                                                  <p className="text-white text-[13px] font-medium mb-3">Hapus website ini? Tindakan ini tidak bisa dibatalkan.</p>
-                                                  <div className="flex gap-2">
-                                                      <button 
-                                                          onClick={(e) => { e.preventDefault(); setDeleteConfirmId(null) }}
-                                                          disabled={isDeleting}
-                                                          className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 text-[12px] font-medium hover:bg-zinc-700 disabled:opacity-50"
-                                                      >
-                                                          Batal
-                                                      </button>
-                                                      <button 
-                                                          onClick={(e) => { e.preventDefault(); handleDeleteWebsite(site.id) }}
-                                                          disabled={isDeleting}
-                                                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500 text-white text-[12px] font-medium hover:bg-red-600 disabled:opacity-50"
-                                                      >
-                                                          {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                                                          Hapus
-                                                      </button>
-                                                  </div>
-                                              </div>
-                                          )}
                                           <iframe
                                             src={`/preview/${site.id}?embed=true`}
                                             scrolling="no"
@@ -627,6 +647,16 @@ export default function DashboardClient({
                                                     </Link>
                                                 </>
                                             )}
+                                            
+                                            <div className="flex justify-end mt-1">
+                                                <button
+                                                    onClick={(e) => { e.preventDefault(); setDeletingWebsite(site); setDeleteChecked(false); }}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 text-red-500 text-[12px] font-medium hover:bg-red-500/10 transition-colors"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    Hapus
+                                                </button>
+                                            </div>
                                         </div>
                                         </div>
                                     </div>
@@ -636,6 +666,72 @@ export default function DashboardClient({
                     )}
                 </div>
             </main>
+
+            {/* ═══ DELETE MODAL ═══ */}
+            {deletingWebsite && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => !isDeleting && setDeletingWebsite(null)} />
+                    
+                    <div className="relative w-full max-w-md bg-[#18181b] border border-zinc-800 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden" style={{ animation: 'fadeInUp 0.2s ease-out' }}>
+                        <div className="px-6 pt-8 pb-6 border-b border-zinc-800 text-center">
+                            <h3 className="text-white font-bold text-[20px] mb-1">Hapus Website?</h3>
+                            <p className="text-zinc-500 text-[14px]">{deletingWebsite.nama_bisnis}</p>
+                        </div>
+
+                        <div className="px-6 py-5">
+                            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-5 text-[13px] text-red-200 leading-relaxed text-center">
+                                {deletingWebsite.status === 'active' ? (
+                                    <>
+                                        Website <strong className="text-white">{deletingWebsite.nama_bisnis}</strong> yang sudah live di <strong className="text-white">{deletingWebsite.subdomain}.{MAIN_DOMAIN}</strong> akan dihapus permanen.<br/><br/>
+                                        Jika kamu sudah membayar, uang tidak akan dikembalikan. Subdomain akan langsung tidak bisa diakses.
+                                    </>
+                                ) : (
+                                    <>
+                                        Website <strong className="text-white">{deletingWebsite.nama_bisnis}</strong> dalam masa preview akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.
+                                    </>
+                                )}
+                            </div>
+
+                            <label className="flex items-center justify-center gap-3 cursor-pointer group mb-6">
+                                <div className="relative flex items-center justify-center">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={deleteChecked}
+                                        onChange={(e) => setDeleteChecked(e.target.checked)}
+                                        disabled={isDeleting}
+                                        className="w-4 h-4 rounded border border-zinc-400 bg-zinc-800 checked:bg-red-600 checked:border-red-600 focus:ring-red-500/30 focus:ring-offset-0 transition-all appearance-none cursor-pointer"
+                                    />
+                                    {deleteChecked && <Check className="absolute w-3 h-3 text-white pointer-events-none" strokeWidth={3} />}
+                                </div>
+                                <span className="text-[13px] text-zinc-400 group-hover:text-zinc-300 transition-colors select-none">
+                                    Saya mengerti website ini akan dihapus permanen
+                                </span>
+                            </label>
+
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setDeletingWebsite(null)}
+                                    disabled={isDeleting}
+                                    className="flex-1 bg-transparent hover:bg-zinc-800 border border-zinc-700 text-zinc-300 font-semibold text-[14px] py-3 px-4 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+                                >
+                                    Batalkan
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(deletingWebsite.id)}
+                                    disabled={!deleteChecked || isDeleting}
+                                    className="flex-1 bg-red-600 hover:bg-red-500 disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-semibold text-[14px] py-3 px-4 rounded-xl transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                    {isDeleting ? (
+                                        <><Loader2 className="w-4 h-4 animate-spin" /> Menghapus...</>
+                                    ) : (
+                                        "Ya, Hapus Permanen"
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ═══ DEPLOY MODAL ═══ */}
             {deployingWebsite && (

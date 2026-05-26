@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import TemplateSatu from '@/components/templates/TemplateSatu'
+import TemplateSatu from '@/components/templates/jasa/TemplateSatu'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
