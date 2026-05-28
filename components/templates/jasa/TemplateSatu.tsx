@@ -418,8 +418,10 @@ export default function TemplateSatu(props: Props) {
               return (
                 <div className={`grid gap-6 ${gridClass}`}>
                   {layanan.map((l, i) => {
-                    const currentHarga = editedLayanan[i]?.harga ?? l.harga;
-                    const isHargaButton = currentHarga.toLowerCase().includes("hubungi");
+                    const rawHarga = editedLayanan[i]?.harga ?? l.harga;
+                    const isHargaText = typeof rawHarga === 'string' && (rawHarga.toLowerCase().includes("hubungi") || rawHarga.toLowerCase().includes("pesan"));
+                    const currentHarga = isHargaText ? rawHarga : "Hubungi Kami";
+                    const isHargaButton = true;
                     
                     if (layananCount === 1) {
                       return (
@@ -658,10 +660,10 @@ export default function TemplateSatu(props: Props) {
           <div className={`max-w-7xl mx-auto px-4 md:px-6`}><div className={`w-full border-t ${hairline}`}></div></div>
           <section id="harga" className={`${isMob ? "py-20" : isDesk ? "py-32" : "py-20 md:py-32"}`}>
             <div className={`max-w-7xl mx-auto ${isMob ? "px-4" : isDesk ? "px-6" : "px-4 md:px-6"}`}>
-              <div className="mb-12 md:mb-16">
+              <div className="mb-12 md:mb-16 text-center">
                 <h2 className={`font-normal tracking-tight leading-[1.2] ${textPrimary} ${isMob ? "text-3xl" : isDesk ? "text-[36px]" : "text-3xl md:text-[36px]"}`}>Paket Harga</h2>
               </div>
-              <div className={`grid ${isMob ? "grid-cols-1 gap-6" : isDesk ? "grid-cols-3 gap-6" : "grid-cols-1 md:grid-cols-3 gap-6"}`}>
+              <div className={`grid gap-6 ${isMob ? "grid-cols-1" : plans.length === 1 ? "grid-cols-1 max-w-md mx-auto w-full" : plans.length === 2 ? "grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto w-full" : isDesk ? "grid-cols-3" : "grid-cols-1 md:grid-cols-3"}`}>
                 {plans.map((plan, idx) => {
                   const isPopular = plan.isPopuler;
                   return (

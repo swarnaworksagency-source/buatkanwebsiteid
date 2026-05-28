@@ -106,9 +106,11 @@ function BuatContent() {
 
   const [kategoriSuggestions, setKategoriSuggestions] = useState<string[]>([]);
   const [layananOptions, setLayananOptions] = useState<string[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('jasa-001');
 
   useEffect(() => {
     const selectedKategori = typeof window !== 'undefined' ? safeStorage.get("selected_kategori") : null;
+    setSelectedTemplateId(typeof window !== 'undefined' ? (safeStorage.get("selected_template") || 'jasa-001') : 'jasa-001');
 
     if (selectedKategori === "fnb") {
       setKategoriSuggestions([
@@ -1209,6 +1211,7 @@ function BuatContent() {
                 </div>
 
                 {/* Foto Bisnis Upload */}
+                {selectedTemplateId !== 'jasa-001' && (
                 <div className="space-y-2.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Camera className="w-3 h-3" /> Foto Bisnis</label>
                   <p className="text-zinc-600 text-[10px] -mt-1">Suasana kerja, toko, atau tim Anda</p>
@@ -1238,6 +1241,7 @@ function BuatContent() {
                     </div>
                   )}
                 </div>
+                )}
 
                 {/* Portofolio Upload */}
                 <div className="space-y-2.5">
