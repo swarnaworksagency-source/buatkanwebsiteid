@@ -144,6 +144,10 @@ Kembalikan JSON MURNI (tanpa markdown, tanpa backtick) dengan struktur PERSIS in
   "footer": {
     "tagline": "ajakan bertindak yang kuat (max 10 kata), relevan dengan ${kategoriJasa || "bisnis ini"}",
     "ctaText": "teks tombol (max 5 kata)"
+  },
+  "seo": {
+    "metaTitle": "judul SEO untuk Google (max 60 karakter). Format: [Nama Bisnis] - [Layanan Utama] di [Lokasi]. Contoh: 'Studio Foto Jogja - Jasa Foto Produk Profesional di Yogyakarta'",
+    "metaDescription": "deskripsi SEO untuk Google (max 155 karakter). Harus mengandung nama bisnis, layanan utama, lokasi, dan ajakan bertindak. Ditulis sebagai kalimat persuasif."
   }
 }
 
@@ -152,7 +156,9 @@ PENTING:
 - Buat layanan sesuai jumlah input layanan di atas
 - Semua teks harus dalam bahasa Indonesia
 - Jangan tambahkan field lain di luar struktur di atas
-- Pastikan JSON valid dan bisa di-parse`;
+- Pastikan JSON valid dan bisa di-parse
+- SEO metaTitle HARUS max 60 karakter dan mengandung nama bisnis + layanan utama + lokasi
+- SEO metaDescription HARUS max 155 karakter dan persuasif`;
 
     const stream = await client.messages.stream({
       model: 'claude-sonnet-4-5',

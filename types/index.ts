@@ -77,6 +77,11 @@ export interface AICaraKerjaItem {
   desc: string;
 }
 
+export interface AISEO {
+  metaTitle: string;
+  metaDescription: string;
+}
+
 export interface TemplateData {
   // From AI (Claude)
   hero: AIHeroSection;
@@ -87,6 +92,7 @@ export interface TemplateData {
   footer: AIFooter;
   caraKerja?: AICaraKerjaItem[];
   caraKerjaTitle?: string;
+  seo?: AISEO;
 
   // From Form Data & Storage
   namaBisnis: string;

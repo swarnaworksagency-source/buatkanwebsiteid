@@ -72,23 +72,53 @@ export async function generateMetadata({ params }: SubdomainPageProps): Promise<
 
     const { data: website } = await supabase
         .from('websites')
-        .select('generated_content, nama_usaha')
+        .select('generated_content, nama_usaha, kategori')
         .eq('subdomain', subdomain)
         .single()
 
     if (!website) return {}
 
     const content = website.generated_content || {}
+    const mainDomain = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'buatkanweb.id'
+    const siteUrl = `https://${subdomain}.${mainDomain}`
+
+    const title = content?.seo?.metaTitle || content?.namaBisnis || website.nama_usaha || 'Website'
+    const description = content?.seo?.metaDescription || content?.hero?.subheadline || ''
 
     return {
-        title: content?.seo?.metaTitle || content?.namaBisnis || website.nama_usaha || 'Website',
-        description: content?.seo?.metaDescription || content?.hero?.subheadline || '',
+        title,
+        description,
+        keywords: [
+            content?.namaBisnis || website.nama_usaha,
+            website.kategori,
+            content?.lokasi,
+            ...(content?.layanan?.map((l: { nama: string }) => l.nama) || []),
+        ].filter(Boolean).join(', '),
+        robots: {
+            index: true,
+            follow: true,
+            googleBot: {
+                index: true,
+                follow: true,
+            },
+        },
+        alternates: {
+            canonical: siteUrl,
+        },
         openGraph: {
             title: content?.namaBisnis || website.nama_usaha || 'Website',
-            description: content?.hero?.subheadline || '',
-            images: content?.logo ? [content.logo] : [],
+            description,
+            url: siteUrl,
+            siteName: content?.namaBisnis || website.nama_usaha || 'Website',
+            images: content?.logo ? [{ url: content.logo, alt: content?.namaBisnis || website.nama_usaha }] : [],
             type: 'website',
             locale: 'id_ID',
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title: content?.namaBisnis || website.nama_usaha || 'Website',
+            description,
+            images: content?.logo ? [content.logo] : [],
         },
         icons: content?.logo ? {
             icon: [{ url: content.logo, rel: 'icon' }],
