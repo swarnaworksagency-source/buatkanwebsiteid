@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { CheckCircle2, Clock, XCircle, Loader2, Globe, ExternalLink, ArrowLeft, RefreshCw } from 'lucide-react'
+import { CheckCircle2, Clock, XCircle, Loader2, Globe, ExternalLink, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 
 const MAIN_DOMAIN = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'buatkanweb.id'
@@ -23,7 +23,8 @@ function PaymentResultContent() {
   const router = useRouter()
   
   const orderId = searchParams.get('order_id')
-  const transactionStatus = searchParams.get('transaction_status')
+  // Duitku mengirim resultCode di returnUrl
+  const resultCode = searchParams.get('resultCode')
   
   const [payment, setPayment] = useState<PaymentDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -62,12 +63,11 @@ function PaymentResultContent() {
     fetchPayment()
   }, [orderId])
 
-  // Auto refresh untuk pending status
+  // Auto refresh untuk pending status (webhook mungkin belum sampai)
   useEffect(() => {
     let interval: NodeJS.Timeout
-    const currentStatus = payment?.midtrans_status || transactionStatus
 
-    if (currentStatus === 'pending') {
+    if (payment && payment.status === 'pending') {
       interval = setInterval(() => {
         fetchPayment()
       }, 5000) // 5 detik
@@ -76,7 +76,7 @@ function PaymentResultContent() {
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [payment, transactionStatus])
+  }, [payment])
 
   if (isLoading) {
     return (
@@ -102,17 +102,12 @@ function PaymentResultContent() {
     )
   }
 
-  const status = payment.midtrans_status || transactionStatus
-  const isSuccess = status === 'settlement' || status === 'capture'
-  const isPending = status === 'pending'
-  const isFailed = status === 'deny' || status === 'cancel' || status === 'expire'
-
-  const getFailedMessage = (s: string) => {
-    if (s === 'deny') return 'Pembayaran ditolak oleh sistem.'
-    if (s === 'cancel') return 'Pembayaran dibatalkan oleh pengguna.'
-    if (s === 'expire') return 'Sesi pembayaran sudah kedaluwarsa.'
-    return 'Pembayaran tidak berhasil.'
-  }
+  // Tentukan status berdasarkan data di DB (yang sudah diupdate webhook)
+  // Fallback ke resultCode dari Duitku jika webhook belum sempat update
+  const dbStatus = payment.status // 'paid', 'pending', 'failed'
+  const isSuccess = dbStatus === 'paid' || resultCode === '00'
+  const isFailed = dbStatus === 'failed' || resultCode === '01'
+  const isPending = !isSuccess && !isFailed // default pending
 
   return (
     <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-4">
@@ -169,14 +164,14 @@ function PaymentResultContent() {
               <div className="w-20 h-20 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Clock className="w-10 h-10" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Pembayaran Diproses</h2>
+              <h2 className="text-2xl font-bold text-white mb-2">Menunggu Pembayaran</h2>
               <p className="text-zinc-400 mb-6 text-[14px] leading-relaxed">
                 Website <strong className="text-white">{payment.websites?.nama_usaha || 'Bisnis Anda'}</strong> akan aktif dalam beberapa menit setelah pembayaran Anda kami terima.
               </p>
 
               <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 mb-8 flex flex-col items-center justify-center gap-2">
                 <RefreshCw className="w-5 h-5 text-zinc-500 animate-spin" />
-                <span className="text-[12px] text-zinc-500">Auto refresh setiap 5 detik...</span>
+                <span className="text-[12px] text-zinc-500">Mengecek status pembayaran otomatis...</span>
               </div>
 
               <Link href="/dashboard" className="block w-full py-3.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl transition-colors font-medium text-[14px]">
@@ -192,7 +187,7 @@ function PaymentResultContent() {
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">Pembayaran Gagal</h2>
               <p className="text-zinc-400 mb-8 text-[14px] leading-relaxed">
-                {getFailedMessage(status)}
+                Pembayaran tidak berhasil. Silakan coba lagi melalui Dashboard.
               </p>
 
               <div className="space-y-3">
@@ -222,3 +217,4 @@ export default function PaymentResultPage() {
     </Suspense>
   )
 }
+

@@ -13,10 +13,8 @@ export async function middleware(request: NextRequest) {
         hostname === `www.${mainDomain}` ||
         hostname.includes('localhost') ||
         hostname.includes('127.0.0.1') ||
-        hostname.includes('vercel.app')
-
-    console.log('hostname:', hostname)
-    console.log('isMainDomain:', isMainDomain)
+        hostname.includes('vercel.app') ||
+        /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname) // Mengizinkan akses via IP lokal (seperti 192.168.x.x)
 
     if (!isMainDomain && hostname.endsWith(`.${mainDomain}`)) {
         // Extract subdomain (e.g., "swarnaworks" from "swarnaworks.buatkanweb.id")

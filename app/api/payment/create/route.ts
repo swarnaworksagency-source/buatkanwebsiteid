@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import midtransClient from 'midtrans-client';
 
 export async function POST(request: Request) {
   try {
@@ -65,40 +64,60 @@ export async function POST(request: Request) {
     const isEarlyAdopter = activeCount < 75;
     const harga = isEarlyAdopter ? 99000 : 199000;
 
-    // Generate order_id unik (maks 50 karakter untuk Midtrans)
-    // UUID (36) + timestamp (13) + prefix terlalu panjang.
-    // Kita ambil 8 karakter pertama dari websiteId + timestamp.
+    // Generate order_id unik
     const orderId = `BWI-${websiteId.substring(0, 8)}-${Date.now()}`;
 
-    // Buat transaksi Midtrans Snap
-    const snap = new midtransClient.Snap({
-      isProduction: process.env.MIDTRANS_IS_PRODUCTION === 'true',
-      serverKey: process.env.MIDTRANS_SERVER_KEY!,
+    // Konfigurasi Duitku
+    const merchantCode = process.env.DUITKU_MERCHANT_CODE;
+    const apiKey = process.env.DUITKU_API_KEY;
+    const isProduction = process.env.DUITKU_ENV === 'production';
+    const apiUrl = isProduction 
+      ? 'https://api-prod.duitku.com/api/merchant/createInvoice'
+      : 'https://api-sandbox.duitku.com/api/merchant/createInvoice';
+
+    if (!merchantCode || !apiKey) {
+      return NextResponse.json({ error: 'Konfigurasi Duitku belum diset di server.' }, { status: 500 });
+    }
+
+    // Buat Signature Duitku (SHA256: merchantCode + timestamp + apiKey)
+    const crypto = require('crypto');
+    const timestamp = Date.now().toString();
+    const signatureStr = `${merchantCode}${timestamp}${apiKey}`;
+    const signature = crypto.createHash('sha256').update(signatureStr).digest('hex');
+
+    const appUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.buatkanweb.id';
+
+    const payload = {
+      paymentAmount: harga,
+      merchantOrderId: orderId,
+      productDetails: isEarlyAdopter 
+        ? 'Subdomain BuatkanWeb.id - Early Adopter (1 Tahun)'
+        : 'Subdomain BuatkanWeb.id (1 Tahun)',
+      email: user.email,
+      customerVaName: user.user_metadata?.full_name || 'User',
+      callbackUrl: `${appUrl}/api/payment/webhook`,
+      returnUrl: `${appUrl}/payment/result?order_id=${orderId}`,
+      expiryPeriod: 1440 // 24 jam
+    };
+
+    // Panggil API Duitku
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-duitku-merchantcode': merchantCode,
+        'x-duitku-timestamp': timestamp,
+        'x-duitku-signature': signature
+      },
+      body: JSON.stringify(payload),
     });
 
-    const transaction = await snap.createTransaction({
-      transaction_details: {
-        order_id: orderId,
-        gross_amount: harga,
-      },
-      customer_details: {
-        first_name: user.user_metadata?.full_name || 'User',
-        email: user.email,
-      },
-      item_details: [
-        {
-          id: 'subdomain-1tahun',
-          price: harga,
-          quantity: 1,
-          name: isEarlyAdopter 
-            ? 'Subdomain BuatkanWeb.id - Early Adopter (1 Tahun)'
-            : 'Subdomain BuatkanWeb.id (1 Tahun)',
-        }
-      ],
-      callbacks: {
-        finish: `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.buatkanweb.id'}/dashboard`
-      }
-    });
+    const result = await response.json();
+
+    if (result.statusCode !== '00') {
+      console.error('Duitku API Error:', result);
+      return NextResponse.json({ error: `Duitku error: ${result.statusMessage || JSON.stringify(result)}` }, { status: 400 });
+    }
 
     // Simpan ke tabel payments
     const { error: insertError } = await supabase
@@ -108,10 +127,9 @@ export async function POST(request: Request) {
         website_id: websiteId,
         order_id: orderId,
         paket: isEarlyAdopter ? 'Subdomain (Early Adopter)' : 'Subdomain 1 Tahun',
-        snap_token: transaction.token,
         harga: harga,
         status: 'pending',
-        midtrans_status: 'pending',
+        midtrans_status: 'pending', // tetap pakai kolom ini atau kita asumsikan sebagai duitku_status sementara
       });
 
     if (insertError) {
@@ -119,10 +137,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Gagal menyimpan ke tabel payments: ${insertError.message}` }, { status: 500 });
     }
 
+    // Kembalikan paymentUrl dari Duitku
     return NextResponse.json({
-      snap_token: transaction.token,
+      paymentUrl: result.paymentUrl,
       order_id: orderId,
-      client_key: process.env.MIDTRANS_CLIENT_KEY,
       harga,
       isEarlyAdopter
     });
@@ -131,3 +149,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Server error: ${error.message || 'Unknown'}` }, { status: 500 });
   }
 }
+

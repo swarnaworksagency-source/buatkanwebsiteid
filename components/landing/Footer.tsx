@@ -79,6 +79,19 @@ export default function Footer() {
               </li>
               <li>
                 <a
+                  href="https://wa.me/6282136111625"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 text-[13px] text-zinc-500 hover:text-white transition-colors duration-200"
+                >
+                  <svg className="w-4 h-4 flex-shrink-0 text-[#1E466B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.896-1.596-5.273-3.973-6.869-6.87l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                  </svg>
+                  +62 821 3611 1625
+                </a>
+              </li>
+              <li>
+                <a
                   href="https://instagram.com/buatkanweb.id"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -91,6 +104,18 @@ export default function Footer() {
                   </svg>
                   @buatkanweb.id
                 </a>
+              </li>
+              <li>
+                <div className="flex items-start gap-2.5 text-[13px] text-zinc-500">
+                  <svg className="w-4 h-4 flex-shrink-0 text-[#1E466B] mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                  </svg>
+                  <span>
+                    Sanggrahan UH 1/620, Semaki,<br/>
+                    Umbulharjo, Yogyakarta
+                  </span>
+                </div>
               </li>
             </ul>
           </div>

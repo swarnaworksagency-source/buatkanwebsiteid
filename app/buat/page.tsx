@@ -379,7 +379,7 @@ function BuatContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create payment');
       
-      setSnapToken(data.snap_token);
+      setSnapToken(data.paymentUrl); // Simpan paymentUrl
       setPaymentInfo({ harga: data.harga, isEarlyAdopter: data.isEarlyAdopter });
       setShowPaymentModal(true);
     } catch (err: any) {
@@ -417,32 +417,12 @@ function BuatContent() {
   };
 
   const handleBayarSekarang = () => {
-    const script = document.createElement('script');
-    script.src = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true' 
-        ? 'https://app.midtrans.com/snap/snap.js'
-        : 'https://app.sandbox.midtrans.com/snap/snap.js';
-    script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '');
-    document.head.appendChild(script);
-
-    script.onload = () => {
-      window.snap.pay(snapToken, {
-        onSuccess: async (result: any) => {
-          await deployWebsite(deploySubdomain, generatedWebsiteId!);
-          setShowPaymentModal(false);
-        },
-        onPending: (result: any) => {
-          setShowPaymentModal(false);
-          setShowDeployModal(false);
-          alert('Pembayaran pending. Website akan aktif setelah konfirmasi.');
-        },
-        onError: (result: any) => {
-          alert('Pembayaran gagal. Silakan coba lagi.');
-        },
-        onClose: () => {
-          // User tutup popup tanpa bayar
-        }
-      });
-    };
+    if (snapToken) {
+      // Redirect ke halaman Duitku
+      window.location.href = snapToken;
+    } else {
+      alert('Gagal memuat halaman pembayaran. Silakan coba lagi.');
+    }
   };
 
   const updateField = useCallback(

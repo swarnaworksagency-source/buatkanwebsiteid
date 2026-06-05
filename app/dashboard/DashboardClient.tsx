@@ -8,13 +8,6 @@ import { useRouter } from 'next/navigation'
 import { LogOut, Plus, Eye, RefreshCw, Clock, Globe, Trash2, Loader2, Edit2, Check, X, Rocket, ExternalLink, AlertCircle, CheckCircle2, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 
-declare global {
-  interface Window {
-    snap: {
-      pay: (token: string, options: object) => void
-    }
-  }
-}
 
 const MAIN_DOMAIN = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'buatkanweb.id'
 
@@ -150,15 +143,7 @@ export default function DashboardClient({
     useEffect(() => {
         fetchDashboardData()
         
-        if (!document.getElementById('midtrans-snap')) {
-            const script = document.createElement('script')
-            script.id = 'midtrans-snap'
-            script.src = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true'
-                ? 'https://app.midtrans.com/snap/snap.js'
-                : 'https://app.sandbox.midtrans.com/snap/snap.js'
-            script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '')
-            document.head.appendChild(script)
-        }
+        // Script midtrans telah dihapus
     }, [fetchDashboardData])
 
     const handleDelete = async (websiteId: string) => {
@@ -328,7 +313,7 @@ export default function DashboardClient({
             const data = await res.json()
             if (!res.ok) throw new Error(data.error || 'Failed to create payment')
             
-            setSnapToken(data.snap_token)
+            setSnapToken(data.paymentUrl) // Simpan paymentUrl ke state snapToken
             setPaymentInfo({ harga: data.harga, isEarlyAdopter: data.isEarlyAdopter })
             setPendingSubdomain(subdomain)
             setShowPaymentModal(true)
@@ -367,73 +352,27 @@ export default function DashboardClient({
     }
 
     const handleBayarSekarang = () => {
-        if (window.snap) {
-            window.snap.pay(snapToken, {
-                onSuccess: async (result: any) => {
-                    await deployWebsite(pendingSubdomain, deployingWebsite!.id)
-                    setShowPaymentModal(false)
-                    fetchDashboardData()
-                },
-                onPending: (result: any) => {
-                    setToast('Pembayaran pending. Website akan aktif setelah konfirmasi.')
-                    setShowPaymentModal(false)
-                    closeDeployModal()
-                    fetchDashboardData()
-                },
-                onError: (result: any) => {
-                    setToast('Pembayaran gagal. Silakan coba lagi.')
-                },
-                onClose: () => {
-                    fetchDashboardData()
-                }
-            })
+        if (snapToken) {
+            // Redirect ke halaman Duitku
+            window.location.href = snapToken
         } else {
-            setToast('Gagal memuat script pembayaran. Silakan refresh halaman.')
+            setToast('Gagal memuat halaman pembayaran. Silakan refresh halaman.')
         }
     }
 
     const handleContinuePayment = async (payment: any) => {
         setContinueLoading(payment.id)
         try {
-            let currentSnapToken = payment.snap_token
-
-            if (!currentSnapToken) {
-                const res = await fetch('/api/payment/create', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        websiteId: payment.website_id,
-                        existingOrderId: payment.order_id
-                    })
-                })
-                const data = await res.json()
-                if (!res.ok) throw new Error(data.error || 'Failed to recreate payment')
-                
-                currentSnapToken = data.snap_token
-                await supabase
-                    .from('payments')
-                    .update({ snap_token: currentSnapToken })
-                    .eq('id', payment.id)
-            }
-
-            if (window.snap) {
-                window.snap.pay(currentSnapToken, {
-                    onSuccess: async () => {
-                        await fetchDashboardData()
-                        router.refresh()
-                        setToast('Pembayaran berhasil! Website kamu sudah aktif.')
-                    },
-                    onPending: () => {
-                        setToast('Pembayaran masih pending. Tunggu konfirmasi.')
-                    },
-                    onError: () => {
-                        setToast('Pembayaran gagal. Silakan coba lagi.')
-                    },
-                    onClose: () => {}
-                })
-            } else {
-                setToast('Sistem pembayaran belum siap. Silakan coba lagi.')
-            }
+            // Karena ini Duitku, kita buat link pembayaran baru
+            const res = await fetch('/api/payment/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ websiteId: payment.website_id })
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Failed to recreate payment')
+            
+            window.location.href = data.paymentUrl;
         } catch (err) {
             setToast('Gagal memuat pembayaran. Coba lagi.')
         } finally {
@@ -493,16 +432,7 @@ export default function DashboardClient({
         return () => document.removeEventListener('mousedown', handleClick)
     }, [])
 
-    useEffect(() => {
-        const script = document.createElement('script')
-        script.src = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === 'true' 
-            ? 'https://app.midtrans.com/snap/snap.js'
-            : 'https://app.sandbox.midtrans.com/snap/snap.js'
-        script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || '')
-        script.async = true
-        document.head.appendChild(script)
-        return () => { document.head.removeChild(script) }
-    }, [])
+
 
     const handleSignOut = async () => {
         await supabase.auth.signOut()
