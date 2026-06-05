@@ -88,9 +88,7 @@ export async function GET(request: Request) {
             .eq('subdomain', subdomain)
             .limit(1)
 
-        console.log('checking subdomain:', subdomain)
-        console.log('result data:', data)
-        console.log('error:', error)
+
 
         if (error) {
             throw error;

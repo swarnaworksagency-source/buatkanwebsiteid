@@ -305,6 +305,15 @@ export default function DashboardClient({
     const startPayment = async (subdomain: string, websiteId: string) => {
         setPaymentLoading(true)
         try {
+            // PENTING: Simpan subdomain ke database SEBELUM redirect ke Duitku
+            // Karena setelah redirect, user meninggalkan halaman dan state hilang
+            const { error: subdomainError } = await supabase
+                .from('websites')
+                .update({ subdomain })
+                .eq('id', websiteId)
+            
+            if (subdomainError) throw new Error('Gagal menyimpan subdomain: ' + subdomainError.message)
+
             const res = await fetch('/api/payment/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -313,7 +322,7 @@ export default function DashboardClient({
             const data = await res.json()
             if (!res.ok) throw new Error(data.error || 'Failed to create payment')
             
-            setSnapToken(data.paymentUrl) // Simpan paymentUrl ke state snapToken
+            setSnapToken(data.paymentUrl)
             setPaymentInfo({ harga: data.harga, isEarlyAdopter: data.isEarlyAdopter })
             setPendingSubdomain(subdomain)
             setShowPaymentModal(true)
@@ -353,7 +362,6 @@ export default function DashboardClient({
 
     const handleBayarSekarang = () => {
         if (snapToken) {
-            // Redirect ke halaman Duitku
             window.location.href = snapToken
         } else {
             setToast('Gagal memuat halaman pembayaran. Silakan refresh halaman.')
@@ -843,13 +851,27 @@ export default function DashboardClient({
                                                     Perpanjang
                                                 </Link>
                                             ) : site.status === 'active' ? (
-                                                <Link
-                                                    href={`/buat?id=${site.id}`}
-                                                    className="flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all"
-                                                >
-                                                    <Settings className="w-3.5 h-3.5" />
-                                                    Kelola
-                                                </Link>
+                                                <>
+                                                    {site.subdomain && (
+                                                        <a
+                                                            href={`https://${site.subdomain}.${MAIN_DOMAIN}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center justify-center gap-2 bg-gradient-to-r from-[#1E466B] to-[#67BAF4] hover:from-[#255580] hover:to-[#67BAF4] text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all shadow-lg shadow-[#1E466B]/20"
+                                                        >
+                                                            <Globe className="w-3.5 h-3.5" />
+                                                            Kunjungi Website
+                                                            <ExternalLink className="w-3 h-3" />
+                                                        </a>
+                                                    )}
+                                                    <Link
+                                                        href={`/buat?id=${site.id}`}
+                                                        className="flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all"
+                                                    >
+                                                        <Settings className="w-3.5 h-3.5" />
+                                                        Kelola
+                                                    </Link>
+                                                </>
                                             ) : (
                                                 /* Preview status: show both preview and deploy buttons */
                                                 <>

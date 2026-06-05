@@ -371,6 +371,15 @@ function BuatContent() {
   const startPayment = async (subdomain: string, websiteId: string) => {
     setPaymentLoading(true);
     try {
+      // PENTING: Simpan subdomain ke database SEBELUM redirect ke Duitku
+      const supabase = createClient();
+      const { error: subdomainError } = await supabase
+        .from('websites')
+        .update({ subdomain })
+        .eq('id', websiteId);
+      
+      if (subdomainError) throw new Error('Gagal menyimpan subdomain: ' + subdomainError.message);
+
       const res = await fetch('/api/payment/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -379,7 +388,7 @@ function BuatContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create payment');
       
-      setSnapToken(data.paymentUrl); // Simpan paymentUrl
+      setSnapToken(data.paymentUrl);
       setPaymentInfo({ harga: data.harga, isEarlyAdopter: data.isEarlyAdopter });
       setShowPaymentModal(true);
     } catch (err: any) {
