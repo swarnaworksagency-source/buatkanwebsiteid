@@ -174,7 +174,7 @@ export default function AboutSection() {
                 Website-mu bisa online hari ini.
               </h3>
               <p className="text-white/80 text-[13px] sm:text-[14px] leading-relaxed mb-5">
-                Isi form, generate, bayar — subdomain aktif. Tidak ada kontrak, tidak ada tim IT.
+                Isi form, generate, bayar, subdomain aktif. Tidak ada kontrak, tidak ada tim IT.
               </p>
               <button
                 onClick={handleCTA}
@@ -188,6 +188,33 @@ export default function AboutSection() {
             </div>
           </div>
 
+        </div>
+
+        {/* Our Collaborators */}
+        <div className="reveal reveal-delay-5 mt-14 sm:mt-20 text-center">
+          <p className="text-[12px] font-bold tracking-[0.2em] uppercase text-zinc-400 mb-8">
+            Our Collaborators
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
+            {[
+              { src: "/DIU UNY.svg", alt: "DIU UNY", wide: true },
+              { src: "/CeritaKu.svg", alt: "CeritaKu" },
+              { src: "/Tone.svg", alt: "Tone" },
+              { src: "/FV UNY.svg", alt: "FV UNY" },
+            ].map((logo) => (
+              <div
+                key={logo.alt}
+                className={`h-20 sm:h-28 flex items-center justify-center ${logo.wide ? "w-56 sm:w-72" : "w-36 sm:w-44"}`}
+              >
+                <img
+                  src={logo.src}
+                  alt={logo.alt}
+                  loading="lazy"
+                  className="h-full w-full object-contain hover:scale-110 transition-transform duration-300"
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
