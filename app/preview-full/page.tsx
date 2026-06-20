@@ -2,25 +2,28 @@
 
 import { useEffect, useState } from "react";
 import type { TemplateData } from "@/types";
-import TemplateSatu from "@/components/templates/jasa/TemplateSatu";
+import { getTemplateComponent } from "@/lib/templateRegistry";
 import { Loader2 } from "lucide-react";
 import { safeStorage } from "@/lib/storage";
 
 export default function PreviewFullPage() {
   const [data, setData] = useState<TemplateData | null>(null);
+  const [templateId, setTemplateId] = useState<string>("jasa-001");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     try {
       const stored = safeStorage.get("zp_preview_data");
+      const tpl = safeStorage.get("zp_preview_template") || safeStorage.get("selected_template") || "jasa-001";
+      setTemplateId(tpl);
       if (stored) {
         const parsed = JSON.parse(stored);
         setData(parsed);
-        
+
         if (parsed.namaBisnis) {
           document.title = parsed.namaBisnis;
         }
-        
+
         if (parsed.logo) {
           let link = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
           if (!link) {
@@ -61,5 +64,6 @@ export default function PreviewFullPage() {
     );
   }
 
-  return <TemplateSatu {...data} />;
+  const TemplateComponent = getTemplateComponent(templateId);
+  return <TemplateComponent {...data} />;
 }

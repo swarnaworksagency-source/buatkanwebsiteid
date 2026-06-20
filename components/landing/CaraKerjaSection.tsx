@@ -1,26 +1,22 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { FileText, Sparkles, Rocket } from "lucide-react";
 
 const STEPS = [
   {
     step: "01",
     title: "Isi Form 5 Menit",
     desc: "Ceritakan usahamu. Mulai dari nama, layanan, kontak, dan upload foto asli produkmu. Tidak perlu keahlian apapun.",
-    icon: <FileText className="w-10 h-10 drop-shadow-[0_0_15px_rgba(103,186,244,0.5)]" strokeWidth={1.5} />,
   },
   {
     step: "02",
     title: "AI Bekerja Otomatis",
     desc: "Teknologi kami menyusun copywriting dan membangun tampilan websitemu secara instan, disesuaikan dengan jenis usahamu.",
-    icon: <Sparkles className="w-10 h-10 drop-shadow-[0_0_15px_rgba(103,186,244,0.5)]" strokeWidth={1.5} />,
   },
   {
     step: "03",
     title: "Preview & Langsung Online",
     desc: "Website profesionalmu siap dalam hitungan detik. Review, lalu deploy usahamu langsung terlihat di internet.",
-    icon: <Rocket className="w-10 h-10 drop-shadow-[0_0_15px_rgba(103,186,244,0.5)]" strokeWidth={1.5} />,
   },
 ];
 
@@ -87,13 +83,9 @@ export default function CaraKerjaSection() {
                 <div className="w-[120px] h-[120px] rounded-3xl bg-gradient-to-br from-[#1A2333] to-[#0A0F1A] border border-white/10 flex items-center justify-center text-[#67BAF4] shadow-[0_0_30px_rgba(30,70,107,0.3)] transition-all duration-500 group-hover:scale-105 group-hover:shadow-[0_0_50px_rgba(103,186,244,0.3)] group-hover:border-[#67BAF4]/30">
                   {/* Subtle inner glow */}
                   <div className="absolute inset-0 rounded-3xl bg-[#67BAF4]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="relative z-10 transition-transform duration-500 group-hover:scale-110">
-                    {item.icon}
-                  </div>
-                </div>
-                {/* The Badge Number */}
-                <div className="absolute -top-4 -right-4 w-12 h-12 rounded-xl bg-gradient-to-br from-[#67BAF4] to-[#1E466B] flex items-center justify-center shadow-[0_0_20px_rgba(103,186,244,0.5)] border border-white/20 z-20 group-hover:-translate-y-1 transition-transform duration-300">
-                  <span className="text-white text-[15px] font-extrabold">{item.step}</span>
+                  <span className="relative z-10 text-[36px] font-extrabold text-[#67BAF4] drop-shadow-[0_0_15px_rgba(103,186,244,0.5)] transition-transform duration-500 group-hover:scale-110 select-none">
+                    {item.step}
+                  </span>
                 </div>
               </div>
 

@@ -3,25 +3,27 @@
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { safeStorage } from '@/lib/storage'
-import TemplateSatu from '@/components/templates/jasa/TemplateSatu'
+import { getTemplateComponent, getTemplateKategori } from '@/lib/templateRegistry'
 import type { TemplateData } from '@/types'
 
-export default function PreviewClient({ 
-    templateId, 
-    templateName, 
-    isEmbed, 
-    data 
-}: { 
-    templateId: string, 
-    templateName: string | null, 
-    isEmbed: boolean, 
-    data: TemplateData 
+export default function PreviewClient({
+    templateId,
+    templateName,
+    isEmbed,
+    data
+}: {
+    templateId: string,
+    templateName: string | null,
+    isEmbed: boolean,
+    data: TemplateData
 }) {
     const router = useRouter()
+    const TemplateComponent = getTemplateComponent(templateId)
+    const kategori = getTemplateKategori(templateId)
 
     const handleSelect = () => {
-      safeStorage.set('selected_template', templateId)
-      safeStorage.set('selected_kategori', templateName ? 'jasa' : 'jasa')
+        safeStorage.set('selected_template', templateId)
+        safeStorage.set('selected_kategori', kategori)
         router.push('/buat')
     }
 
@@ -62,9 +64,10 @@ export default function PreviewClient({
                 </div>
             )}
 
-            {/* Template Preview */}
-            <div className="flex-1">
-                <TemplateSatu {...data} />
+            {/* Template Preview — transform-gpu agar navbar `fixed` di dalam template
+                ter-scope ke area ini (tidak menumpuk dengan top bar preview) */}
+            <div className="flex-1 transform-gpu">
+                <TemplateComponent {...data} />
             </div>
         </div>
     )

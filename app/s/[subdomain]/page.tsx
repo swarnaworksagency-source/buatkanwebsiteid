@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import TemplateSatu from '@/components/templates/jasa/TemplateSatu'
+import { getTemplateComponent } from '@/lib/templateRegistry'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
@@ -38,14 +38,19 @@ export default async function SubdomainPage({ params }: SubdomainPageProps) {
 
     if (!website) notFound()
 
-    // Spread generated_content as individual props to TemplateSatu
+    // Pilih komponen template sesuai template_id website (jasa / personal / dst).
+    // Jangan hardcode TemplateSatu — website portofolio harus render template-nya sendiri.
     const content = website.generated_content || {}
+    const TemplateComponent = getTemplateComponent(website.template_id || 'jasa-001')
 
     return (
-        <TemplateSatu
+        <TemplateComponent
             hero={content.hero}
             about={content.about}
             layanan={content.layanan}
+            keahlian={content.keahlian}
+            namaPanggilan={content.namaPanggilan}
+            lokasi={content.lokasi}
             targetPelanggan={content.targetPelanggan}
             testimonialPlaceholder={content.testimonialPlaceholder}
             footer={content.footer}

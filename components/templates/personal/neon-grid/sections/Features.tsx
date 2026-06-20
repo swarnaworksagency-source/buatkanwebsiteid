@@ -1,0 +1,102 @@
+"use client";
+
+import { Check } from "lucide-react";
+import { EditableText } from "@/components/ui/EditableText";
+import { NEON, type SectionProps } from "../types";
+
+export default function Features({
+    layanan, about, fotoBisnis, portofolio, isEditMode, edit, name,
+}: SectionProps) {
+    const features = (layanan && layanan.length > 0)
+        ? layanan.slice(0, 5)
+        : (about?.keunggulan || []).slice(0, 5).map(k => ({ nama: k, deskripsi: "", harga: "" }));
+
+    if (features.length === 0) return null;
+
+    const img1 = (fotoBisnis && fotoBisnis[1]) || (portofolio && portofolio[0]) || "";
+    const img2 = (fotoBisnis && fotoBisnis[2]) || (portofolio && portofolio[1]) || "";
+    const img3 = (fotoBisnis && fotoBisnis[3]) || (portofolio && portofolio[2]) || (fotoBisnis && fotoBisnis[0]) || "";
+
+    return (
+        <section id="fitur" style={{ backgroundColor: NEON.bg, backgroundImage: "radial-gradient(ellipse 50% 60% at 80% 40%, rgba(163,230,53,0.04) 0%, transparent 65%)", padding: "60px 36px 96px", minHeight: "100vh", display: "flex", alignItems: "center" }}>
+            <div className="ng-feat" style={{
+                maxWidth: 1280, margin: "0 auto", width: "100%",
+                display: "grid", gridTemplateColumns: "5fr 7fr", gap: 40, alignItems: "center",
+            }}>
+                {/* Left — feature detail list */}
+                <div>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                        {features.map((f, i) => (
+                            <div key={i} style={{
+                                display: "flex", gap: 16, padding: "22px 0",
+                                borderBottom: i < features.length - 1 ? `1px solid ${NEON.hairline}` : "none",
+                            }}>
+                                <span style={{
+                                    width: 30, height: 30, borderRadius: NEON.sm, flexShrink: 0, marginTop: 2,
+                                    background: NEON.limeDim, color: NEON.lime,
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                }}>
+                                    <Check size={16} />
+                                </span>
+                                <div>
+                                    <h3 style={{ fontSize: 18, fontWeight: 700, color: "#fff", margin: "0 0 6px", letterSpacing: "-0.02em" }}>
+                                        <EditableText
+                                            value={f.nama}
+                                            onChange={(v: string) => edit(`layanan.${i}.nama`, v)}
+                                            isEditMode={isEditMode}
+                                            as="span"
+                                        />
+                                    </h3>
+                                    {f.deskripsi && (
+                                        <p style={{ fontSize: 14, lineHeight: 1.6, color: NEON.body, margin: 0 }}>
+                                            <EditableText
+                                                value={f.deskripsi}
+                                                onChange={(v: string) => edit(`layanan.${i}.deskripsi`, v)}
+                                                isEditMode={isEditMode}
+                                                as="span"
+                                                multiline
+                                            />
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Right — 3-photo grid */}
+                <div>
+                    <h2 style={{ fontSize: "clamp(24px, 3vw, 36px)", fontWeight: 800, letterSpacing: "-0.035em", color: "#fff", margin: "0 0 24px", lineHeight: 1.1, textAlign: "center" }}>
+                        Apa yang Anda dapat bersama{" "}
+                        <span style={{ color: NEON.lime }}>{name.split(" ")[0]}</span>
+                    </h2>
+                    <div className="ng-feat-imgs" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+                        <div style={{ borderRadius: NEON.lg, overflow: "hidden", border: `1px solid ${NEON.hairline}`, aspectRatio: "3 / 4", background: NEON.card }}>
+                            {img1 ? <img src={img1} alt={name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <Placeholder />}
+                        </div>
+                        <div style={{ borderRadius: NEON.lg, overflow: "hidden", border: `1px solid ${NEON.hairline}`, aspectRatio: "3 / 4", background: NEON.card }}>
+                            {img2 ? <img src={img2} alt={name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <Placeholder />}
+                        </div>
+                        <div style={{ borderRadius: NEON.lg, overflow: "hidden", border: `1px solid ${NEON.hairline}`, aspectRatio: "3 / 4", background: NEON.card }}>
+                            {img3 ? <img src={img3} alt={name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <Placeholder />}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <style>{`
+                @media (max-width: 900px) {
+                    .ng-feat { grid-template-columns: 1fr !important; gap: 40px !important; }
+                }
+            `}</style>
+        </section>
+    );
+}
+
+function Placeholder() {
+    return (
+        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: NEON.card }}>
+            <span style={{ width: 44, height: 44, borderRadius: 12, background: NEON.limeDim, display: "inline-block" }} />
+        </div>
+    );
+}

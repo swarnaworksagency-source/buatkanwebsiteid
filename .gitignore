@@ -42,3 +42,10 @@ next-env.d.ts
 
 # context docs (internal only, not for production)
 /Markdown/
+
+# local dummy/preview assets (personal, not for production)
+/public/FotoSoni.webp
+/public/image.png
+
+# Agent config
+.mcp.json

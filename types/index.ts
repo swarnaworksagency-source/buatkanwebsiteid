@@ -1,3 +1,18 @@
+export interface ProyekPortofolio {
+  namaProyek: string;
+  kategori: string;
+  masalah: string;
+  peran: string;
+  solusi: string;
+  hasil: string;
+  foto: string;
+}
+
+export interface KeahlianItem {
+  nama: string;
+  deskripsi: string;
+}
+
 export interface PaketHarga {
   namaPaket: string;
   harga: string;
@@ -8,6 +23,7 @@ export interface PaketHarga {
 export interface FormData {
   // Step 1 — Profil Dasar
   namaBisnis: string;
+  namaPanggilan: string;
   tagline: string;
   kategoriJasa: string;
   lokasi: string;
@@ -17,14 +33,17 @@ export interface FormData {
   instagram: string;
   x_twitter: string;
   tiktok: string;
+  linkedin: string;
   // Step 2 — Detail Bisnis
   keunggulan: string;
   layananSpesifik: string[];
+  keahlianList: KeahlianItem[];
   usia: string[];
   statusKeluarga: string[];
   pekerjaan: string[];
   gayaHidup: string[];
   paketHarga: PaketHarga[];
+  proyekPortofolio: ProyekPortofolio[];
   // Step 3 — Visual & Aset
   tema: "dark" | "light" | "";
   primaryColor: string;
@@ -96,6 +115,7 @@ export interface TemplateData {
 
   // From Form Data & Storage
   namaBisnis: string;
+  namaPanggilan?: string;
   kategori: string;
   lokasi: string;
   
@@ -110,6 +130,9 @@ export interface TemplateData {
     y: number;
     scale: number;
   }>;
+
+  // Posisi/zoom gambar per-id (dipakai template yang punya banyak slot gambar, mis. personal-001)
+  imagePositions?: Record<string, { x: number; y: number; scale: number }>;
   
   sosmed: {
     instagram: string;
@@ -123,6 +146,7 @@ export interface TemplateData {
   };
   
   paketHarga: PaketHarga[];
+  keahlian?: KeahlianItem[];
   logo: string;
   fotoBisnis: string[];
   portofolio: string[];

@@ -4,63 +4,10 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { safeStorage } from '@/lib/storage'
+import { TEMPLATES_BY_KATEGORI } from '@/lib/templates'
+import type { TemplateItem } from '@/lib/templates'
 import { LogOut, ArrowLeft, Check, ExternalLink, Lock } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
-
-// ── Template Data ──────────────────────────────────────
-
-interface Template {
-    id: string
-    nama: string
-    kategori: string
-    status: 'available' | 'coming_soon'
-    badge?: string
-}
-
-const JASA_TEMPLATES: Template[] = [
-    { id: 'jasa-001', nama: 'Minimalist', kategori: 'jasa', status: 'available', badge: 'Populer' },
-    { id: 'jasa-002', nama: 'Modern', kategori: 'jasa', status: 'coming_soon' },
-    { id: 'jasa-003', nama: 'Clean', kategori: 'jasa', status: 'coming_soon' },
-    { id: 'jasa-004', nama: 'Bold', kategori: 'jasa', status: 'coming_soon' },
-    { id: 'jasa-005', nama: 'Elegant', kategori: 'jasa', status: 'coming_soon' },
-    { id: 'jasa-006', nama: 'Colorful', kategori: 'jasa', status: 'coming_soon' },
-    { id: 'jasa-007', nama: 'Corporate', kategori: 'jasa', status: 'coming_soon' },
-    { id: 'jasa-008', nama: 'Creative', kategori: 'jasa', status: 'coming_soon' },
-    { id: 'jasa-009', nama: 'Premium', kategori: 'jasa', status: 'coming_soon' },
-    { id: 'jasa-010', nama: 'Exclusive', kategori: 'jasa', status: 'coming_soon' },
-]
-
-const FNB_TEMPLATES: Template[] = [
-    { id: 'fnb-001', nama: 'Classic', kategori: 'fnb', status: 'available', badge: 'Populer' },
-    { id: 'fnb-002', nama: 'Warm', kategori: 'fnb', status: 'coming_soon' },
-    { id: 'fnb-003', nama: 'Minimalist', kategori: 'fnb', status: 'coming_soon' },
-    { id: 'fnb-004', nama: 'Cozy', kategori: 'fnb', status: 'coming_soon' },
-    { id: 'fnb-005', nama: 'Fresh', kategori: 'fnb', status: 'coming_soon' },
-    { id: 'fnb-006', nama: 'Rustic', kategori: 'fnb', status: 'coming_soon' },
-    { id: 'fnb-007', nama: 'Urban', kategori: 'fnb', status: 'coming_soon' },
-    { id: 'fnb-008', nama: 'Elegant', kategori: 'fnb', status: 'coming_soon' },
-    { id: 'fnb-009', nama: 'Premium', kategori: 'fnb', status: 'coming_soon' },
-    { id: 'fnb-010', nama: 'Exclusive', kategori: 'fnb', status: 'coming_soon' },
-]
-
-const KREATIF_TEMPLATES: Template[] = [
-    { id: 'kreatif-001', nama: 'Classic', kategori: 'kreatif', status: 'available', badge: 'Populer' },
-    { id: 'kreatif-002', nama: 'Artsy', kategori: 'kreatif', status: 'coming_soon' },
-    { id: 'kreatif-003', nama: 'Minimalist', kategori: 'kreatif', status: 'coming_soon' },
-    { id: 'kreatif-004', nama: 'Bold', kategori: 'kreatif', status: 'coming_soon' },
-    { id: 'kreatif-005', nama: 'Earthy', kategori: 'kreatif', status: 'coming_soon' },
-    { id: 'kreatif-006', nama: 'Colorful', kategori: 'kreatif', status: 'coming_soon' },
-    { id: 'kreatif-007', nama: 'Handcraft', kategori: 'kreatif', status: 'coming_soon' },
-    { id: 'kreatif-008', nama: 'Studio', kategori: 'kreatif', status: 'coming_soon' },
-    { id: 'kreatif-009', nama: 'Premium', kategori: 'kreatif', status: 'coming_soon' },
-    { id: 'kreatif-010', nama: 'Exclusive', kategori: 'kreatif', status: 'coming_soon' },
-]
-
-const ALL_TEMPLATES: Record<string, Template[]> = {
-    jasa: JASA_TEMPLATES,
-    fnb: FNB_TEMPLATES,
-    kreatif: KREATIF_TEMPLATES,
-}
 
 // ── Component ──────────────────────────────────────
 
@@ -85,7 +32,7 @@ export default function KategoriTemplateClient({
     const router = useRouter()
     const supabase = createClient()
 
-    const templates = ALL_TEMPLATES[kategori] || []
+    const templates = TEMPLATES_BY_KATEGORI[kategori] || []
 
     const initials = userName
         .split(' ')
@@ -110,7 +57,7 @@ export default function KategoriTemplateClient({
         router.refresh()
     }
 
-    const handleSelectTemplate = (template: Template) => {
+    const handleSelectTemplate = (template: TemplateItem) => {
         setSelectedId(template.id)
         safeStorage.set('selected_kategori', kategori)
         safeStorage.set('selected_template', template.id)

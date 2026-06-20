@@ -1,12 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import KategoriTemplateClient from './KategoriTemplateClient'
-
-const KATEGORI_LABELS: Record<string, string> = {
-    jasa: 'Template Jasa',
-    fnb: 'Template FnB',
-    kreatif: 'Template Kreatif & Kerajinan',
-}
+import { KATEGORI_LABELS } from '@/lib/templates'
 
 export async function generateMetadata({ params }: { params: Promise<{ kategori: string }> }) {
     const { kategori } = await params
@@ -19,7 +14,7 @@ export default async function KategoriTemplatePage({ params }: { params: Promise
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) redirect('/auth/login')
-    if (!['jasa', 'fnb', 'kreatif'].includes(kategori)) redirect('/dashboard/template')
+    if (!['jasa', 'fnb', 'kreatif', 'personal'].includes(kategori)) redirect('/dashboard/template')
 
     const userName = user.user_metadata?.full_name || user.user_metadata?.name || 'User'
     const userEmail = user.email || ''

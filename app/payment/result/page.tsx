@@ -43,6 +43,7 @@ function PaymentResultContent() {
         .from('payments')
         .select('*, websites(nama_usaha, subdomain)')
         .eq('order_id', orderId)
+        .is('deleted_at', null)
         .single()
 
       if (error) throw error

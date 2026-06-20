@@ -13,6 +13,9 @@ const NAV_LINKS = [
   { label: "Portofolio", href: "#portofolio" },
 ];
 
+const SECTION_IDS = ["beranda", "tentang", "cara-kerja", "harga", "portofolio"];
+const LIGHT_SECTION_IDS = new Set(["tentang", "harga"]);
+
 function UserAvatar({ name, email }: { name?: string; email?: string }) {
   const initials = name
     ? name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -30,6 +33,7 @@ function UserAvatar({ name, email }: { name?: string; email?: string }) {
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isLight, setIsLight] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user, loading, signOut } = useAuth();
 
@@ -44,22 +48,51 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  // Switch nav text color depending on whether a light or dark section sits behind it
+  useEffect(() => {
+    const navMidpoint = 32;
+
+    const handleScroll = () => {
+      let current: string | null = null;
+      for (const id of SECTION_IDS) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= navMidpoint && rect.bottom > navMidpoint) {
+          current = id;
+          break;
+        }
+      }
+      setIsLight(current ? LIGHT_SECTION_IDS.has(current) : false);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, []);
+
   const userName = user?.user_metadata?.full_name || user?.user_metadata?.name;
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0D0D0D]/80 backdrop-blur-xl border-b border-white/5">
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-transparent">
+      <div className="w-full px-5 sm:px-8 lg:px-10 h-16 flex items-center">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <img
-            src="/Logo buatkanweb.webp"
-            alt="BuatkanWeb.id"
-            className="w-8 h-8 rounded-lg object-contain transition-transform group-hover:scale-105"
-          />
-          <span className="font-bold text-[15px] tracking-tight text-white">
-            BuatkanWeb<span className="text-[#67BAF4]">.id</span>
-          </span>
-        </Link>
+        <div className="flex-1 flex items-center justify-start">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <img
+              src="/Logo buatkanweb.webp"
+              alt="BuatkanWeb.id"
+              className="w-8 h-8 rounded-lg object-contain transition-transform group-hover:scale-105"
+            />
+            <span className={`font-bold text-[15px] tracking-tight transition-colors duration-300 ${isLight ? "text-[#0D0D0D]" : "text-white"}`}>
+              BuatkanWeb<span className="text-[#67BAF4]">.id</span>
+            </span>
+          </Link>
+        </div>
 
         {/* Desktop Links */}
         <div className="hidden md:flex items-center gap-7">
@@ -67,7 +100,7 @@ export default function Navbar() {
             <a
               key={link.label}
               href={link.href}
-              className="text-[13px] font-medium text-zinc-400 hover:text-white transition-colors duration-200"
+              className={`text-[13px] font-medium transition-colors duration-200 ${isLight ? "text-zinc-600 hover:text-[#0D0D0D]" : "text-zinc-400 hover:text-white"}`}
             >
               {link.label}
             </a>
@@ -75,7 +108,7 @@ export default function Navbar() {
         </div>
 
         {/* Desktop Auth Area */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="flex-1 hidden md:flex items-center justify-end gap-3">
           {loading ? (
             <div className="w-8 h-8 rounded-full bg-zinc-800 animate-pulse" />
           ) : user ? (
@@ -120,7 +153,7 @@ export default function Navbar() {
             <>
               <Link
                 href="/auth/login"
-                className="text-zinc-300 hover:text-white text-[13px] font-medium px-4 py-2 rounded-xl border border-zinc-700 hover:border-zinc-500 transition-all duration-200"
+                className={`text-[13px] font-medium px-4 py-2 rounded-xl border transition-all duration-200 ${isLight ? "text-zinc-700 border-zinc-300 hover:text-[#0D0D0D] hover:border-zinc-400" : "text-zinc-300 border-zinc-700 hover:text-white hover:border-zinc-500"}`}
               >
                 Masuk
               </Link>
@@ -138,7 +171,7 @@ export default function Navbar() {
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="md:hidden p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+          className={`md:hidden p-2 rounded-lg transition-colors cursor-pointer ${isLight ? "text-zinc-600 hover:text-[#0D0D0D] hover:bg-black/5" : "text-zinc-400 hover:text-white hover:bg-white/5"}`}
           aria-label="Toggle menu"
         >
           {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}

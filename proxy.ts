@@ -1,7 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+// Next.js 16: konvensi `middleware` di-deprecate, diganti `proxy` (runtime nodejs).
+// Fungsi WAJIB bernama `proxy`. Logika tetap sama: subdomain rewrite + session refresh + admin guard.
+export async function proxy(request: NextRequest) {
     const hostnameFull = request.headers.get('host') || ''
     const hostname = hostnameFull.split(':')[0] // remove port for accurate matching
     const mainDomain = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'buatkanweb.id'
@@ -61,7 +63,20 @@ export async function middleware(request: NextRequest) {
     )
 
     // Refresh session - important for Server Components
-    await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // ─── Admin Route Guard ───
+    // Lapis pertama: blok /admin/* untuk non-admin sebelum render.
+    // (Lapis kedua: requireAdmin() di server component + requireAdminApi() di /api/admin.)
+    // Catatan: matcher di bawah meng-exclude /api, jadi endpoint API harus self-guard.
+    if (request.nextUrl.pathname.startsWith('/admin')) {
+        if (!user) {
+            return NextResponse.redirect(new URL('/auth/login', request.url))
+        }
+        if (user.app_metadata?.role !== 'admin') {
+            return NextResponse.redirect(new URL('/dashboard', request.url))
+        }
+    }
 
     return supabaseResponse
 }

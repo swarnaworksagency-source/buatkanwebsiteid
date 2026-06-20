@@ -6,63 +6,13 @@ import { useRouter } from 'next/navigation'
 import { LogOut, ArrowLeft, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { safeStorage } from '@/lib/storage'
+import { CATEGORIES, TEMPLATES_BY_KATEGORI } from '@/lib/templates'
 
 interface TemplateClientProps {
     userName: string
     userEmail: string
     userAvatar: string | null
 }
-
-const CATEGORIES = [
-    {
-        id: 'jasa',
-        name: 'Jasa',
-        desc: 'Salon, Bengkel, Laundry, Fotografi, dll',
-        number: '01',
-        comingSoon: false,
-        accent: {
-            border: 'border-[#1E466B]/30 hover:border-[#67BAF4]/60',
-            borderSelected: 'border-[#67BAF4] shadow-[0_0_30px_-5px_rgba(103,186,244,0.35)]',
-            bg: 'from-[#0f1a2e] to-[#162a4a]',
-            iconBg: 'bg-[#1E466B]/20',
-            iconColor: 'text-[#67BAF4]',
-            badge: 'bg-[#1E466B]/30 text-[#67BAF4]',
-            glow: 'bg-[#67BAF4]/8',
-        },
-    },
-    {
-        id: 'fnb',
-        name: 'FnB',
-        desc: 'Warung Makan, Kafe, Bakery, Catering, dll',
-        number: '02',
-        comingSoon: true,
-        accent: {
-            border: 'border-amber-500/20 hover:border-amber-400/50',
-            borderSelected: 'border-amber-400 shadow-[0_0_30px_-5px_rgba(251,191,36,0.3)]',
-            bg: 'from-[#1a1508] to-[#2a2010]',
-            iconBg: 'bg-amber-500/15',
-            iconColor: 'text-amber-400',
-            badge: 'bg-amber-500/20 text-amber-400',
-            glow: 'bg-amber-500/6',
-        },
-    },
-    {
-        id: 'kreatif',
-        name: 'Kreatif & Kerajinan',
-        desc: 'Batik, Keramik, Handmade, Desainer, dll',
-        number: '03',
-        comingSoon: true,
-        accent: {
-            border: 'border-purple-500/20 hover:border-purple-400/50',
-            borderSelected: 'border-purple-400 shadow-[0_0_30px_-5px_rgba(192,132,252,0.3)]',
-            bg: 'from-[#150f2e] to-[#1f1640]',
-            iconBg: 'bg-purple-500/15',
-            iconColor: 'text-purple-400',
-            badge: 'bg-purple-500/20 text-purple-400',
-            glow: 'bg-purple-500/6',
-        },
-    },
-]
 
 export default function TemplateClient({ userName, userEmail, userAvatar }: TemplateClientProps) {
     const [selected, setSelected] = useState<string | null>(null)
@@ -175,18 +125,19 @@ export default function TemplateClient({ userName, userEmail, userAvatar }: Temp
                     {/* Heading */}
                     <div className="text-center mb-10 sm:mb-14">
                         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-tight mb-3">
-                            Pilih Kategori Usahamu
+                            Pilih Kategori Website
                         </h1>
                         <p className="text-zinc-400 text-[14px] sm:text-[15px] max-w-md mx-auto">
-                            Kami akan buatkan website yang sesuai dengan jenis usahamu
+                            Tentukan kategori yang paling sesuai dengan tujuan dan kebutuhanmu
                         </p>
                     </div>
 
                     {/* Category Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                         {CATEGORIES.map((cat) => {
                             const isSelected = selected === cat.id
                             const isDisabled = cat.comingSoon
+                            const templateCount = (TEMPLATES_BY_KATEGORI[cat.id] || []).filter(t => t.status === 'available').length
 
                             return (
                                 <button
@@ -235,7 +186,7 @@ export default function TemplateClient({ userName, userEmail, userAvatar }: Temp
                                         </span>
                                     ) : (
                                         <span className={`inline-flex px-2.5 py-1 rounded-lg text-[11px] font-semibold ${cat.accent.badge}`}>
-                                            1 Template
+                                            {templateCount} Template
                                         </span>
                                     )}
                                 </button>

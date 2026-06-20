@@ -2,10 +2,10 @@
 
 import { useState, useCallback, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { TemplateData, FormData, PaketHarga } from "@/types";
-import TemplateSatu from "@/components/templates/jasa/TemplateSatu";
+import type { TemplateData, FormData, PaketHarga, ProyekPortofolio, KeahlianItem } from "@/types";
+import { getTemplateComponent, getTemplateKategori } from "@/lib/templateRegistry";
 import { createClient } from "@/lib/supabase";
-import { convertToWebP, convertAllToWebP } from "@/lib/imageUtils";
+import { convertToWebP } from "@/lib/imageUtils";
 import { SearchableCombobox } from "@/components/ui/SearchableCombobox";
 import { safeStorage } from '@/lib/storage';
 import { AutocompleteInput } from "@/components/ui/AutocompleteInput";
@@ -36,22 +36,98 @@ const GAYA_HIDUP_OPTIONS = [
   "Warga Lokal Setia"
 ];
 const STEP_INFO = [
-  { label: "Profil Dasar", icon: Building2 },
-  { label: "Detail Bisnis", icon: Target },
-  { label: "Visual & Aset", icon: Palette },
+  { label: "Profil Dasar", num: "01" },
+  { label: "Detail Bisnis", num: "02" },
+  { label: "Visual & Aset", num: "03" },
 ];
 const NUANSA_OPTIONS = [
   { value: "dark" as const, label: "Dark Mode", desc: "Elegan & Mewah", icon: Moon, preview: "bg-zinc-900 border-zinc-700" },
   { value: "light" as const, label: "Light Mode", desc: "Bersih & Terang", icon: Sun, preview: "bg-white border-zinc-200" },
 ];
+const PROFESI_OPTIONS = [
+  // Kreatif & Desain
+  "UI/UX Designer", "Desainer Grafis", "Illustrator", "Motion Designer", "Animator", "3D Artist",
+  "Product Designer", "Brand Designer", "Logo Designer", "Interior Designer", "Arsitek", "Desainer Produk",
+  // Web & Software
+  "Web Developer", "Frontend Developer", "Backend Developer", "Full-Stack Developer", "Mobile Developer",
+  "Software Engineer", "Game Developer", "WordPress Developer", "No-Code Developer", "DevOps Engineer",
+  "Data Scientist", "Data Analyst", "Machine Learning Engineer", "QA Engineer", "System Administrator",
+  // Media & Konten
+  "Fotografer", "Videografer", "Content Creator", "Influencer", "YouTuber", "Podcaster", "Editor Video",
+  "Penulis", "Copywriter", "Content Writer", "Blogger", "Jurnalis", "Translator", "Voice Over Talent",
+  // Marketing & Bisnis
+  "Digital Marketer", "Social Media Specialist", "SEO Specialist", "Ads Specialist", "Marketing Consultant",
+  "Business Consultant", "Project Manager", "Product Manager", "Brand Strategist", "Public Relations",
+  "Sales Executive", "Account Manager", "Entrepreneur", "Founder", "Virtual Assistant",
+  // Edukasi & Pengembangan Diri
+  "Guru", "Dosen", "Tutor Privat", "Trainer", "Mentor", "Coach", "Life Coach", "Public Speaker",
+  // Kesehatan & Kebugaran
+  "Dokter", "Dokter Gigi", "Psikolog", "Perawat", "Bidan", "Ahli Gizi", "Personal Trainer", "Yoga Instructor",
+  "Terapis", "Fisioterapis", "Apoteker",
+  // Keuangan & Hukum
+  "Akuntan", "Konsultan Pajak", "Financial Planner", "Pengacara", "Notaris", "Auditor",
+  // Beauty, Fashion & Event
+  "Make Up Artist", "Hair Stylist", "Fashion Designer", "Penjahit", "Stylist", "Wedding Organizer",
+  "Event Organizer", "MC / Pembawa Acara", "Dekorator",
+  // Seni & Hiburan
+  "Musisi", "Penyanyi", "Produser Musik", "DJ", "Aktor", "Penari", "Seniman", "Pelukis",
+  // Lain-lain
+  "Chef", "Barista", "Konsultan", "Researcher", "Surveyor", "Agen Properti", "Agen Asuransi",
+];
 const INITIAL_FORM: FormData = {
-  namaBisnis: "", tagline: "", kategoriJasa: "", lokasi: "", nomorWhatsApp: "",
-  telepon: "", email: "", instagram: "", x_twitter: "", tiktok: "",
-  keunggulan: "", layananSpesifik: [], usia: [], statusKeluarga: [], pekerjaan: [], gayaHidup: [], paketHarga: [],
+  namaBisnis: "", namaPanggilan: "", tagline: "", kategoriJasa: "", lokasi: "", nomorWhatsApp: "",
+  telepon: "", email: "", instagram: "", x_twitter: "", tiktok: "", linkedin: "",
+  keunggulan: "", layananSpesifik: [], keahlianList: [], usia: [], statusKeluarga: [], pekerjaan: [], gayaHidup: [], paketHarga: [],
+  proyekPortofolio: [],
   tema: "", primaryColor: "#4f46e5", logo: "", fotoBisnis: [], portofolio: [],
 };
-const inputClass = "w-full bg-zinc-900/80 border border-zinc-800 rounded-xl px-4 py-3 text-[13px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 transition-all duration-200";
+const inputClass = "w-full bg-zinc-900/80 border border-zinc-800 rounded-xl px-4 py-3 text-[13px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none focus:ring-1 focus:ring-zinc-600 focus:border-zinc-600 transition-all duration-200";
+// Format gambar yang diterima: PNG, JPG/JPEG, SVG. Non-SVG auto-convert ke WebP saat upload.
+const IMG_ACCEPT = "image/png,image/jpeg,image/svg+xml,.png,.jpg,.jpeg,.svg";
+const MAX_PORTOFOLIO = 8;
 const EMPTY_PAKET: PaketHarga = { namaPaket: "", harga: "", fitur: [], isPopuler: false };
+const EMPTY_PROYEK = (): ProyekPortofolio => ({ namaProyek: "", kategori: "", masalah: "", peran: "", solusi: "", hasil: "", foto: "" });
+const EMPTY_KEAHLIAN = (): KeahlianItem => ({ nama: "", deskripsi: "" });
+const COUNTRY_CODES = [
+  { code: "+62", country: "Indonesia", flag: "🇮🇩" },
+  { code: "+60", country: "Malaysia", flag: "🇲🇾" },
+  { code: "+65", country: "Singapura", flag: "🇸🇬" },
+  { code: "+63", country: "Filipina", flag: "🇵🇭" },
+  { code: "+66", country: "Thailand", flag: "🇹🇭" },
+  { code: "+84", country: "Vietnam", flag: "🇻🇳" },
+  { code: "+855", country: "Kamboja", flag: "🇰🇭" },
+  { code: "+95", country: "Myanmar", flag: "🇲🇲" },
+  { code: "+673", country: "Brunei", flag: "🇧🇳" },
+  { code: "+856", country: "Laos", flag: "🇱🇦" },
+  { code: "+61", country: "Australia", flag: "🇦🇺" },
+  { code: "+64", country: "Selandia Baru", flag: "🇳🇿" },
+  { code: "+1", country: "Amerika Serikat", flag: "🇺🇸" },
+  { code: "+44", country: "Inggris", flag: "🇬🇧" },
+  { code: "+49", country: "Jerman", flag: "🇩🇪" },
+  { code: "+33", country: "Prancis", flag: "🇫🇷" },
+  { code: "+31", country: "Belanda", flag: "🇳🇱" },
+  { code: "+39", country: "Italia", flag: "🇮🇹" },
+  { code: "+34", country: "Spanyol", flag: "🇪🇸" },
+  { code: "+966", country: "Arab Saudi", flag: "🇸🇦" },
+  { code: "+971", country: "Uni Emirat Arab", flag: "🇦🇪" },
+  { code: "+974", country: "Qatar", flag: "🇶🇦" },
+  { code: "+965", country: "Kuwait", flag: "🇰🇼" },
+  { code: "+91", country: "India", flag: "🇮🇳" },
+  { code: "+86", country: "Tiongkok", flag: "🇨🇳" },
+  { code: "+81", country: "Jepang", flag: "🇯🇵" },
+  { code: "+82", country: "Korea Selatan", flag: "🇰🇷" },
+  { code: "+886", country: "Taiwan", flag: "🇹🇼" },
+  { code: "+852", country: "Hong Kong", flag: "🇭🇰" },
+  { code: "+92", country: "Pakistan", flag: "🇵🇰" },
+  { code: "+880", country: "Bangladesh", flag: "🇧🇩" },
+  { code: "+94", country: "Sri Lanka", flag: "🇱🇰" },
+  { code: "+7", country: "Rusia", flag: "🇷🇺" },
+  { code: "+90", country: "Turki", flag: "🇹🇷" },
+  { code: "+20", country: "Mesir", flag: "🇪🇬" },
+  { code: "+27", country: "Afrika Selatan", flag: "🇿🇦" },
+  { code: "+55", country: "Brasil", flag: "🇧🇷" },
+  { code: "+52", country: "Meksiko", flag: "🇲🇽" },
+];
 
 function BuatContent() {
   const router = useRouter();
@@ -96,21 +172,55 @@ function BuatContent() {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const fotoBisnisInputRef = useRef<HTMLInputElement>(null);
   const portofolioInputRef = useRef<HTMLInputElement>(null);
+
+  // Preview desktop: render di lebar VIEWPORT asli (sama seperti /preview-full) lalu
+  // scale ke lebar panel. Supaya proporsi (gutter hero, dll) identik dengan /preview-full,
+  // bukan beda karena lebar render berbeda. Template pakai container-query (cqw).
+  const desktopFrameRef = useRef<HTMLDivElement>(null);
+  const desktopContentRef = useRef<HTMLDivElement>(null);
+  const [desktopScale, setDesktopScale] = useState(0.5);
+  const [desktopContentHeight, setDesktopContentHeight] = useState(0);
+  const [desktopWidth, setDesktopWidth] = useState(1440);
+  useEffect(() => {
+    const frame = desktopFrameRef.current;
+    const content = desktopContentRef.current;
+    if (!frame || !content) return;
+    const update = () => {
+      const vw = window.innerWidth;
+      setDesktopWidth(vw);
+      const w = frame.clientWidth;
+      if (w > 0 && vw > 0) setDesktopScale(w / vw);
+      setDesktopContentHeight(content.offsetHeight);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(frame);
+    ro.observe(content);
+    window.addEventListener("resize", update);
+    return () => { ro.disconnect(); window.removeEventListener("resize", update); };
+  }, [templateData, viewMode]);
   const [authChecked, setAuthChecked] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [waCountryCode, setWaCountryCode] = useState("+62");
+  const [showWaDropdown, setShowWaDropdown] = useState(false);
+  const [formMode, setFormMode] = useState<"jasa" | "portfolio">("jasa");
+  const [proyekFotoFiles, setProyekFotoFiles] = useState<(File | null)[]>([]);
 
   // File objects store — keeps actual File references for reliable upload
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [fotoBisnisFiles, setFotoBisnisFiles] = useState<File[]>([]);
+  const [fotoBisnisFiles, setFotoBisnisFiles] = useState<(File | null)[]>([]);
   const [portofolioFiles, setPortofolioFiles] = useState<File[]>([]);
 
   const [kategoriSuggestions, setKategoriSuggestions] = useState<string[]>([]);
   const [layananOptions, setLayananOptions] = useState<string[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('jasa-001');
+  const TemplateComponent = getTemplateComponent(selectedTemplateId);
 
   useEffect(() => {
     const selectedKategori = typeof window !== 'undefined' ? safeStorage.get("selected_kategori") : null;
-    setSelectedTemplateId(typeof window !== 'undefined' ? (safeStorage.get("selected_template") || 'jasa-001') : 'jasa-001');
+    const tplId = typeof window !== 'undefined' ? (safeStorage.get("selected_template") || 'jasa-001') : 'jasa-001';
+    setSelectedTemplateId(tplId);
+    setFormMode(tplId === 'personal-001' ? 'portfolio' : 'jasa');
 
     if (selectedKategori === "fnb") {
       setKategoriSuggestions([
@@ -147,6 +257,18 @@ function BuatContent() {
         "Foto Produk Profesional", "Packaging Cantik & Gift Wrap",
         "Tersedia untuk Souvenir Pernikahan", "Tersedia untuk Souvenir Perusahaan",
         "Kolaborasi & Reseller", "Open Dropship"
+      ]);
+    } else if (selectedKategori === "personal") {
+      setKategoriSuggestions([
+        "Freelancer", "Desainer Grafis", "Web Developer", "Fotografer Pribadi", 
+        "Content Creator / Influencer", "Konsultan Independen", "Penulis / Blogger", 
+        "Tutor / Pengajar Pribadi", "Agen Asuransi / Properti", "Seniman / Ilustrator", 
+        "Videografer", "Ahli SEO / Digital Marketer", "Personal Trainer", "Make Up Artist (MUA)"
+      ]);
+      setLayananOptions([
+        "Jasa Desain Custom", "Konsultasi 1-on-1", "Pembuatan Website / Aplikasi", 
+        "Pemotretan & Editing", "Endorsement & Kolaborasi", "Pembuatan Artikel / Copywriting", 
+        "Sesi Mentoring", "Jasa SEO & Iklan Digital", "Kelas & Kursus Privat", "Makeup & Styling"
       ]);
     } else {
       // Default / "jasa"
@@ -256,6 +378,12 @@ function BuatContent() {
         return;
       }
 
+      // Pulihkan template dari kolom template_id website (bukan dari localStorage yang bisa basi).
+      // Tanpa ini, preview/edit website portofolio bisa salah render jadi template jasa.
+      const loadedTemplateId = data.template_id || 'jasa-001';
+      setSelectedTemplateId(loadedTemplateId);
+      setFormMode(getTemplateKategori(loadedTemplateId) === 'personal' ? 'portfolio' : 'jasa');
+
       const loadedFormData = data.generated_content?.__formData || {
         ...INITIAL_FORM,
         namaBisnis: data.nama_usaha || "",
@@ -270,6 +398,9 @@ function BuatContent() {
       loadedFormData.logo = data.logo_url || "";
       loadedFormData.portofolio = data.foto_urls || [];
       loadedFormData.fotoBisnis = data.generated_content?.fotoBisnis || [];
+      // Guard field baru untuk website lama yang __formData-nya belum punya keahlianList.
+      if (!Array.isArray(loadedFormData.keahlianList)) loadedFormData.keahlianList = [];
+      if (!Array.isArray(loadedFormData.proyekPortofolio)) loadedFormData.proyekPortofolio = [];
 
       setFormData(loadedFormData);
 
@@ -410,6 +541,7 @@ function BuatContent() {
         .select('id, status')
         .eq('website_id', generatedWebsiteId)
         .eq('status', 'paid')
+        .is('deleted_at', null)
         .maybeSingle();
 
       if (error) throw error;
@@ -441,15 +573,23 @@ function BuatContent() {
   );
 
   const canProceed = (): boolean => {
-    if (step === 0) return !!(formData.namaBisnis.trim() && formData.kategoriJasa.trim() && formData.lokasi && formData.nomorWhatsApp.trim());
-    if (step === 1) return !!(
-      formData.layananSpesifik.length > 0 &&
-      formData.keunggulan.trim() &&
-      formData.usia.length > 0 &&
-      formData.statusKeluarga.length > 0 &&
-      formData.pekerjaan.length > 0 &&
-      formData.gayaHidup.length > 0
-    );
+    if (step === 0) {
+      if (formMode === "portfolio")
+        return !!(formData.namaBisnis.trim() && formData.tagline.trim() && formData.lokasi && formData.nomorWhatsApp.trim());
+      return !!(formData.namaBisnis.trim() && formData.kategoriJasa.trim() && formData.lokasi && formData.nomorWhatsApp.trim());
+    }
+    if (step === 1) {
+      if (formMode === "portfolio")
+        return formData.keahlianList.some((k) => k.nama.trim()) && formData.proyekPortofolio.some((p) => !!p.foto);
+      return !!(
+        formData.layananSpesifik.length > 0 &&
+        formData.keunggulan.trim() &&
+        formData.usia.length > 0 &&
+        formData.statusKeluarga.length > 0 &&
+        formData.pekerjaan.length > 0 &&
+        formData.gayaHidup.length > 0
+      );
+    }
     if (step === 2) return !!formData.tema;
     return false;
   };
@@ -466,11 +606,36 @@ function BuatContent() {
     updateField("logo", "");
   };
   const handlePhotosSelect = (files: FileList, field: "fotoBisnis" | "portofolio") => {
-    const fileArray = Array.from(files);
+    let fileArray = Array.from(files);
+    // Batasi portofolio maksimal MAX_PORTOFOLIO slot
+    if (field === "portofolio") {
+      const sisa = MAX_PORTOFOLIO - formData.portofolio.length;
+      if (sisa <= 0) return;
+      fileArray = fileArray.slice(0, sisa);
+    }
     const newUrls = fileArray.map((f) => URL.createObjectURL(f));
     if (field === "fotoBisnis") setFotoBisnisFiles(prev => [...prev, ...fileArray]);
     else setPortofolioFiles(prev => [...prev, ...fileArray]);
     updateField(field, [...formData[field], ...newUrls]);
+  };
+  // Slot foto bernama (mode portfolio): fotoBisnis[0] = Hero, fotoBisnis[1] = Profil
+  const handleFotoBisnisSlot = (index: number, file: File) => {
+    const old = formData.fotoBisnis[index];
+    if (old && old.startsWith("blob:")) URL.revokeObjectURL(old);
+    const url = URL.createObjectURL(file);
+    setFotoBisnisFiles((prev) => { const next = [...prev]; while (next.length <= index) next.push(null); next[index] = file; return next; });
+    setFormData((prev) => {
+      const arr = [...prev.fotoBisnis];
+      while (arr.length <= index) arr.push("");
+      arr[index] = url;
+      return { ...prev, fotoBisnis: arr };
+    });
+  };
+  const removeFotoBisnisSlot = (index: number) => {
+    const old = formData.fotoBisnis[index];
+    if (old && old.startsWith("blob:")) URL.revokeObjectURL(old);
+    setFotoBisnisFiles((prev) => { const next = [...prev]; if (next[index] !== undefined) next[index] = null; return next; });
+    setFormData((prev) => { const arr = [...prev.fotoBisnis]; if (arr[index] !== undefined) arr[index] = ""; return { ...prev, fotoBisnis: arr }; });
   };
   const handlePhotoRemove = (index: number, field: "fotoBisnis" | "portofolio") => {
     URL.revokeObjectURL(formData[field][index]);
@@ -508,6 +673,37 @@ function BuatContent() {
   const togglePopuler = (index: number) => {
     const updated = formData.paketHarga.map((p, i) => ({ ...p, isPopuler: i === index ? !p.isPopuler : false }));
     updateField("paketHarga", updated);
+  };
+
+  /* ── Keahlian Handlers (mode portfolio) ── */
+  const addKeahlian = () => updateField("keahlianList", [...formData.keahlianList, EMPTY_KEAHLIAN()]);
+  const removeKeahlian = (index: number) => updateField("keahlianList", formData.keahlianList.filter((_, i) => i !== index));
+  const updateKeahlian = (index: number, key: keyof KeahlianItem, value: string) => {
+    updateField("keahlianList", formData.keahlianList.map((k, i) => i === index ? { ...k, [key]: value } : k));
+  };
+
+  /* ── Proyek Portofolio Handlers ── */
+  const addProyek = () => {
+    updateField("proyekPortofolio", [...formData.proyekPortofolio, EMPTY_PROYEK()]);
+    setProyekFotoFiles((prev) => [...prev, null]);
+  };
+  const removeProyek = (index: number) => {
+    updateField("proyekPortofolio", formData.proyekPortofolio.filter((_, i) => i !== index));
+    setProyekFotoFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+  const updateProyek = (index: number, key: keyof ProyekPortofolio, value: string) => {
+    const updated = formData.proyekPortofolio.map((p, i) => i === index ? { ...p, [key]: value } : p);
+    updateField("proyekPortofolio", updated);
+  };
+  const handleProyekFoto = (index: number, file: File) => {
+    const url = URL.createObjectURL(file);
+    setProyekFotoFiles((prev) => { const next = [...prev]; next[index] = file; return next; });
+    updateProyek(index, "foto", url);
+  };
+  const removeProyekFoto = (index: number) => {
+    if (formData.proyekPortofolio[index]?.foto) URL.revokeObjectURL(formData.proyekPortofolio[index].foto);
+    setProyekFotoFiles((prev) => { const next = [...prev]; next[index] = null; return next; });
+    updateProyek(index, "foto", "");
   };
 
   const handleDiscardAndBack = async () => {
@@ -565,7 +761,7 @@ function BuatContent() {
 
       if (quotaError) throw new Error("Gagal mengecek kuota.");
       if ((generatedTodayCount ?? 0) >= 3) {
-        throw new Error("Kamu sudah generate 3x hari ini. Coba lagi besok pukul 00.00 WIB");
+        throw new Error("Batas generate harian tercapai. Kamu sudah generate 3 website hari ini. Coba lagi besok setelah pukul 00.00 WIB.");
       }
 
       // Upload function — uses File objects directly for reliable upload
@@ -592,9 +788,6 @@ function BuatContent() {
       // Optimize images before upload
       setIsOptimizing(true);
       const optimizedLogo = logoFile ? await convertToWebP(logoFile, 0.9).catch(() => logoFile) : null;
-      const optimizedPortofolio = portofolioFiles.length > 0 
-        ? await convertAllToWebP(portofolioFiles, 0.85).catch(() => portofolioFiles) 
-        : portofolioFiles;
       setIsOptimizing(false);
 
       let logoUrl = "";
@@ -604,22 +797,45 @@ function BuatContent() {
         logoUrl = formData.logo; // Already uploaded URL
       }
 
-      // Parallelize portofolio uploads
-      const portofolioUploadPromises = formData.portofolio.map(async (url, i) => {
-        if (url.startsWith('blob:') && optimizedPortofolio[i]) {
-          return await uploadFile(optimizedPortofolio[i], 'portofolio');
-        } else if (!url.startsWith('blob:')) {
+      // Sumber foto portofolio: mode portfolio → foto proyek (step 2); selain itu → upload portofolio (step 3).
+      // Mode portfolio: hanya proyek yg punya foto — supaya urutan portofolio[i] sejajar layanan[i] (judul dari AI).
+      const proyekWithFoto = formData.proyekPortofolio
+        .map((p, i) => ({ p, file: proyekFotoFiles[i] || null }))
+        .filter((e) => !!e.p.foto);
+      const portoSource = formMode === "portfolio"
+        ? proyekWithFoto.map((e) => ({ url: e.p.foto, file: e.file }))
+        : formData.portofolio.map((url, i) => ({ url, file: portofolioFiles[i] || null }));
+
+      const portofolioUrls = (await Promise.all(portoSource.map(async ({ url, file }) => {
+        if (url && url.startsWith('blob:') && file) {
+          const opt = await convertToWebP(file, 0.85).catch(() => file);
+          return await uploadFile(opt, 'portofolio');
+        } else if (url && !url.startsWith('blob:')) {
           return url; // Already uploaded URL
         }
         return "";
-      });
-      const portofolioUrls = (await Promise.all(portofolioUploadPromises)).filter(url => url !== "");
+      }))).filter(url => url !== "");
 
-      // Call API
+      // Foto bisnis (slot bernama: [0]=Hero, [1]=Profil). Pertahankan index — JANGAN filter "".
+      const fotoBisnisUploadPromises = formData.fotoBisnis.map(async (url, i) => {
+        if (url && url.startsWith('blob:') && fotoBisnisFiles[i]) {
+          const opt = await convertToWebP(fotoBisnisFiles[i]!, 0.85).catch(() => fotoBisnisFiles[i]!);
+          return await uploadFile(opt, 'foto-bisnis');
+        } else if (url && !url.startsWith('blob:')) {
+          return url;
+        }
+        return "";
+      });
+      const fotoBisnisUrls = await Promise.all(fotoBisnisUploadPromises);
+
+      // Call API — mode portfolio kirim hanya proyek berfoto (urut sejajar dgn portofolioUrls)
+      const apiBody = formMode === "portfolio"
+        ? { ...formData, proyekPortofolio: proyekWithFoto.map((e) => e.p), layananSpesifik: formData.keahlianList.map((k) => k.nama).filter(Boolean) }
+        : formData;
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(apiBody),
         signal: abortControllerRef.current.signal
       });
 
@@ -637,6 +853,11 @@ function BuatContent() {
         const { done, value } = await reader.read();
         if (done) break;
         streamData += decoder.decode(value, { stream: true });
+      }
+
+      // Server menandai kegagalan AI lewat marker. Pesan generik (tak perlu detail token).
+      if (streamData.includes("__GENERATE_ERROR__")) {
+        throw new Error("Gagal generate website. Coba lagi sebentar lagi.");
       }
 
       let aiData;
@@ -661,6 +882,7 @@ function BuatContent() {
         footer: aiData.footer || { tagline: "", ctaText: "" },
 
         namaBisnis: formData.namaBisnis,
+        namaPanggilan: formData.namaPanggilan,
         kategori: formData.kategoriJasa,
         lokasi: formData.lokasi,
 
@@ -680,9 +902,10 @@ function BuatContent() {
         },
 
         paketHarga: formData.paketHarga,
+        keahlian: formData.keahlianList.filter((k) => k.nama.trim()),
         logo: logoUrl,
         portofolio: portofolioUrls,
-        fotoBisnis: [], // Can be expanded later if needed
+        fotoBisnis: fotoBisnisUrls,
       };
 
       // Save to DB
@@ -700,7 +923,7 @@ function BuatContent() {
         kategori: formData.kategoriJasa,
         logo_url: logoUrl,
         foto_urls: portofolioUrls,
-        generated_content: { ...finalData, __formData: { ...formData, logo: logoUrl, portofolio: portofolioUrls } },
+        generated_content: { ...finalData, __formData: { ...formData, logo: logoUrl, portofolio: portofolioUrls, fotoBisnis: fotoBisnisUrls } },
         template_id: templateId,
         status: 'preview',
         expires_at: expiresAt.toISOString()
@@ -721,12 +944,8 @@ function BuatContent() {
 
       if (dbData?.id) {
         setGeneratedWebsiteId(dbData.id);
-
-        // Log generate action for quota tracking
-        await supabase.from('generate_logs').insert({
-          user_id: user.id,
-          website_id: dbData.id,
-        });
+        // generate_logs kini dicatat server-side di /api/generate (enforcement kuota
+        // pindah ke server). Tidak insert dari client lagi agar tidak dobel hitung.
       }
 
       setTemplateData(finalData);
@@ -735,6 +954,7 @@ function BuatContent() {
       // Now that we have streaming, we don't need artificial delay, but we'll leave a small 1s buffer for UX
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setStep(2); // Lanjut ke step 3
+      setMobilePanel("preview"); // Mobile: auto pindah ke panel preview biar user sadar website sudah ter-generate
     } catch (err: any) {
       if (err.name === 'AbortError') {
         setError("Proses generate dibatalkan.");
@@ -753,6 +973,7 @@ function BuatContent() {
     const tentativeUpdatedContent: TemplateData = {
       ...(templateData || ({} as TemplateData)),
       namaBisnis: formData.namaBisnis,
+      namaPanggilan: formData.namaPanggilan,
       kategori: formData.kategoriJasa,
       lokasi: formData.lokasi,
       kontak: { wa: formData.nomorWhatsApp, telepon: formData.telepon, email: formData.email },
@@ -802,9 +1023,6 @@ function BuatContent() {
       // Optimize images before upload
       setIsOptimizing(true);
       const optimizedLogo = logoFile ? await convertToWebP(logoFile, 0.9).catch(() => logoFile) : null;
-      const optimizedPortofolio = portofolioFiles.length > 0 
-        ? await convertAllToWebP(portofolioFiles, 0.85).catch(() => portofolioFiles) 
-        : portofolioFiles;
       setIsOptimizing(false);
 
       let logoUrl = "";
@@ -817,36 +1035,59 @@ function BuatContent() {
         logoUrl = templateData.logo;
       }
 
-      // Parallelize portofolio uploads
-      let portofolioUrls: string[] = [];
-      if (formData.portofolio.length > 0) {
-        const portofolioUploadPromises = formData.portofolio.map(async (url, i) => {
-          if (url.startsWith('blob:') && optimizedPortofolio[i]) {
-            return await uploadFile(optimizedPortofolio[i], 'portofolio');
-          } else if (!url.startsWith('blob:')) {
-            return url;
-          }
-          return "";
-        });
-        portofolioUrls = (await Promise.all(portofolioUploadPromises)).filter(url => url !== "");
-      }
+      // Sumber foto portofolio: mode portfolio → foto proyek (step 2, hanya yg berfoto); selain itu → upload portofolio (step 3).
+      const portoSource = formMode === "portfolio"
+        ? formData.proyekPortofolio
+            .map((p, i) => ({ url: p.foto, file: proyekFotoFiles[i] || null }))
+            .filter((e) => !!e.url)
+        : formData.portofolio.map((url, i) => ({ url, file: portofolioFiles[i] || null }));
+
+      let portofolioUrls: string[] = (await Promise.all(portoSource.map(async ({ url, file }) => {
+        if (url && url.startsWith('blob:') && file) {
+          const opt = await convertToWebP(file, 0.85).catch(() => file);
+          return await uploadFile(opt, 'portofolio');
+        } else if (url && !url.startsWith('blob:')) {
+          return url;
+        }
+        return "";
+      }))).filter(url => url !== "");
       // Fallback: if all portofolio URLs were stale blobs with no File objects, keep existing ones
       if (portofolioUrls.length === 0 && templateData?.portofolio && templateData.portofolio.length > 0) {
         portofolioUrls = templateData.portofolio.filter(url => !url.startsWith('blob:'));
+      }
+
+      // Foto bisnis (slot bernama [0]=Hero, [1]=Profil) — pertahankan index, jangan filter "".
+      let fotoBisnisUrls = await Promise.all(
+        formData.fotoBisnis.map(async (url, i) => {
+          if (url && url.startsWith('blob:') && fotoBisnisFiles[i]) {
+            const opt = await convertToWebP(fotoBisnisFiles[i]!, 0.85).catch(() => fotoBisnisFiles[i]!);
+            return await uploadFile(opt, 'foto-bisnis');
+          } else if (url && !url.startsWith('blob:')) {
+            return url;
+          }
+          return "";
+        })
+      );
+      // Fallback: jika tidak ada foto bisnis baru, pertahankan yang sudah tersimpan
+      if (fotoBisnisUrls.every(u => !u) && templateData?.fotoBisnis && templateData.fotoBisnis.length > 0) {
+        fotoBisnisUrls = templateData.fotoBisnis.filter(u => !u.startsWith('blob:'));
       }
 
       // Merge current templateData with new formData
       const updatedContent: TemplateData = {
         ...(templateData || ({} as TemplateData)),
         namaBisnis: formData.namaBisnis,
+        namaPanggilan: formData.namaPanggilan,
         kategori: formData.kategoriJasa,
         lokasi: formData.lokasi,
         kontak: { wa: formData.nomorWhatsApp, telepon: formData.telepon, email: formData.email },
         sosmed: { instagram: formData.instagram, tiktok: formData.tiktok, twitter: formData.x_twitter },
         warna: { primary: formData.primaryColor, tema: (formData.tema || "light") as "dark" | "light" },
         paketHarga: formData.paketHarga,
+        keahlian: formData.keahlianList.filter((k) => k.nama.trim()),
         logo: logoUrl,
         portofolio: portofolioUrls,
+        fotoBisnis: fotoBisnisUrls,
       };
 
       // Save clean URLs in __formData so next load won't have stale blob URLs
@@ -854,6 +1095,7 @@ function BuatContent() {
         ...formData,
         logo: logoUrl,
         portofolio: portofolioUrls,
+        fotoBisnis: fotoBisnisUrls,
       };
       const finalDbContent = { ...updatedContent, __formData: cleanFormData };
 
@@ -891,6 +1133,7 @@ function BuatContent() {
   const handleOpenFullView = () => {
     if (templateData) {
       safeStorage.set("zp_preview_data", JSON.stringify(templateData));
+      safeStorage.set("zp_preview_template", selectedTemplateId);
       window.open("/preview-full", "_blank");
     }
   };
@@ -930,24 +1173,28 @@ function BuatContent() {
         <aside className={`flex-shrink-0 w-full md:max-w-[420px] border-r border-zinc-800/80 bg-zinc-950 flex flex-col overflow-hidden ${mobilePanel === "form" ? "flex" : "hidden"} md:flex`}>
           {/* Step Indicator */}
           <div className="px-5 pt-5 pb-4 border-b border-zinc-800/50">
-            <div className="flex items-center gap-1.5 mb-4">
-              {STEP_INFO.map((s, i) => {
-                const Icon = s.icon;
+            <div className="flex items-center mb-4">
+              {(formMode === "portfolio"
+                ? [{ label: "Profil Pribadi", num: "01" }, { label: "Proyek & Keahlian", num: "02" }, { label: "Visual & Aset", num: "03" }]
+                : STEP_INFO
+              ).map((s, i) => {
                 const isActive = i === step, isDone = i < step;
                 return (
-                  <div key={i} className="flex items-center gap-1.5 flex-1">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300 ${isActive ? "bg-indigo-600 shadow-lg shadow-indigo-500/30" : isDone ? "bg-indigo-600/20 border border-indigo-500/30" : "bg-zinc-800/60 border border-zinc-800"}`}>
-                      {isDone ? <Check className="w-3 h-3 text-indigo-400" /> : <Icon className={`w-3 h-3 ${isActive ? "text-white" : "text-zinc-600"}`} />}
+                  <div key={i} className="flex items-center flex-1 last:flex-none">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300 ${isActive ? "bg-indigo-600" : isDone ? "bg-indigo-600/20 border border-indigo-500/30" : "bg-zinc-800/60 border border-zinc-800"}`}>
+                      <span className={`text-[11px] font-extrabold tracking-tight ${isActive ? "text-white" : isDone ? "text-indigo-400" : "text-zinc-600"}`}>{s.num}</span>
                     </div>
-                    {i < STEP_INFO.length - 1 && <div className={`flex-1 h-px transition-colors duration-300 ${isDone ? "bg-indigo-500/40" : "bg-zinc-800"}`} />}
+                    {i < STEP_INFO.length - 1 && (
+                      <div className={`flex-1 h-0.5 mx-2 rounded-full transition-all duration-500 ${isDone ? "bg-indigo-500/60" : "bg-zinc-800"}`} />
+                    )}
                   </div>
                 );
               })}
             </div>
             <div className="flex items-center gap-2">
-              {(() => { const StepIcon = STEP_INFO[step].icon; return <StepIcon className="w-4 h-4 text-indigo-400" />; })()}
+              <span className="text-[11px] font-extrabold text-indigo-400 tabular-nums">{(formMode === "portfolio" ? [{ num: "01", label: "Profil Pribadi" }, { num: "02", label: "Proyek & Keahlian" }, { num: "03", label: "Visual & Aset" }] : STEP_INFO)[step].num}</span>
               <h2 className="font-semibold text-[14px] text-zinc-100">
-                Step {step + 1} of 3: <span className="text-zinc-400 font-normal">{STEP_INFO[step].label}</span>
+                <span className="text-zinc-400 font-normal">{(formMode === "portfolio" ? [{ num: "01", label: "Profil Pribadi" }, { num: "02", label: "Proyek & Keahlian" }, { num: "03", label: "Visual & Aset" }] : STEP_INFO)[step].label}</span>
               </h2>
             </div>
           </div>
@@ -955,8 +1202,9 @@ function BuatContent() {
           {/* Form Content */}
           <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
 
+
             {/* ═══ STEP 1 ═══ */}
-            {step === 0 && (
+            {step === 0 && formMode === "jasa" && (
               <>
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Building2 className="w-3 h-3" /> Nama Bisnis</label>
@@ -982,7 +1230,61 @@ function BuatContent() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">WhatsApp</label>
-                      <input id="input-whatsapp" type="text" value={formData.nomorWhatsApp} onChange={(e) => updateField("nomorWhatsApp", e.target.value)} placeholder="628xxx" className={`${inputClass} !py-2 !text-[12px]`} />
+                      <div
+                        className="relative"
+                        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setShowWaDropdown(false); }}
+                      >
+                        <div className="flex items-center bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-zinc-600 focus-within:border-zinc-600 transition-all duration-200">
+                          <button
+                            type="button"
+                            onClick={() => setShowWaDropdown((v) => !v)}
+                            className="flex items-center gap-1 px-2.5 py-2 text-zinc-300 text-[12px] font-medium flex-shrink-0 border-r border-zinc-800 hover:bg-zinc-800/60 transition-colors focus:outline-none"
+                          >
+                            <span>{waCountryCode}</span>
+                            <ChevronDown className={`w-3 h-3 text-zinc-500 transition-transform duration-200 ${showWaDropdown ? "rotate-180" : ""}`} />
+                          </button>
+                          <input
+                            id="input-whatsapp"
+                            type="text"
+                            value={(() => {
+                              const digits = waCountryCode.replace("+", "");
+                              return formData.nomorWhatsApp.startsWith(digits) ? formData.nomorWhatsApp.slice(digits.length) : formData.nomorWhatsApp;
+                            })()}
+                            onChange={(e) => {
+                              const local = e.target.value.replace(/\D/g, "");
+                              updateField("nomorWhatsApp", waCountryCode.replace("+", "") + local);
+                            }}
+                            placeholder=""
+                            className="flex-1 bg-transparent px-3 py-2 text-[12px] text-zinc-100 focus:outline-none"
+                          />
+                        </div>
+                        {showWaDropdown && (
+                          <div className="absolute left-0 top-full mt-1 w-56 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+                            <div className="max-h-52 overflow-y-auto">
+                              {COUNTRY_CODES.map((c) => (
+                                <button
+                                  key={c.code}
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => {
+                                    const oldDigits = waCountryCode.replace("+", "");
+                                    const newDigits = c.code.replace("+", "");
+                                    const localNum = formData.nomorWhatsApp.startsWith(oldDigits) ? formData.nomorWhatsApp.slice(oldDigits.length) : formData.nomorWhatsApp;
+                                    setWaCountryCode(c.code);
+                                    updateField("nomorWhatsApp", newDigits + localNum);
+                                    setShowWaDropdown(false);
+                                  }}
+                                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-[12px] hover:bg-zinc-800 transition-colors text-left ${c.code === waCountryCode ? "bg-zinc-800/60 text-indigo-400" : "text-zinc-300"}`}
+                                >
+                                  <span className="text-[16px] leading-none flex-shrink-0">{c.flag}</span>
+                                  <span className="flex-1 truncate">{c.country}</span>
+                                  <span className="text-zinc-500 font-mono flex-shrink-0">{c.code}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Email</label>
@@ -997,23 +1299,122 @@ function BuatContent() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Instagram</label>
-                      <input id="input-ig" type="text" value={formData.instagram} onChange={(e) => updateField("instagram", e.target.value)} placeholder="@username" className={`${inputClass} !py-2 !text-[12px]`} />
+                      <div className="flex items-center bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-zinc-600 focus-within:border-zinc-600 transition-all duration-200">
+                        <span className="px-2.5 py-2 text-zinc-500 text-[12px] font-medium flex-shrink-0 border-r border-zinc-800 select-none">@</span>
+                        <input id="input-ig" type="text" value={formData.instagram} onChange={(e) => updateField("instagram", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
+                      </div>
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">TikTok</label>
-                      <input id="input-tiktok" type="text" value={formData.tiktok} onChange={(e) => updateField("tiktok", e.target.value)} placeholder="@username" className={`${inputClass} !py-2 !text-[12px]`} />
+                      <div className="flex items-center bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-zinc-600 focus-within:border-zinc-600 transition-all duration-200">
+                        <span className="px-2.5 py-2 text-zinc-500 text-[12px] font-medium flex-shrink-0 border-r border-zinc-800 select-none">@</span>
+                        <input id="input-tiktok" type="text" value={formData.tiktok} onChange={(e) => updateField("tiktok", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
+                      </div>
                     </div>
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">X (Twitter)</label>
-                    <input id="input-twitter" type="text" value={formData.x_twitter} onChange={(e) => updateField("x_twitter", e.target.value)} placeholder="@username" className={`${inputClass} !py-2 !text-[12px]`} />
+                    <div className="flex items-center bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-zinc-600 focus-within:border-zinc-600 transition-all duration-200">
+                      <span className="px-2.5 py-2 text-zinc-500 text-[12px] font-medium flex-shrink-0 border-r border-zinc-800 select-none">@</span>
+                      <input id="input-twitter" type="text" value={formData.x_twitter} onChange={(e) => updateField("x_twitter", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ═══ STEP 1 — PORTFOLIO ═══ */}
+            {step === 0 && formMode === "portfolio" && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Hash className="w-3 h-3" /> Nama Lengkap</label>
+                    <input type="text" value={formData.namaBisnis} onChange={(e) => updateField("namaBisnis", e.target.value)} placeholder="contoh: Andi Pratama" className={inputClass} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Type className="w-3 h-3" /> Nama Panggilan</label>
+                    <input type="text" value={formData.namaPanggilan} onChange={(e) => updateField("namaPanggilan", e.target.value)} placeholder="contoh: Andi" className={inputClass} />
+                  </div>
+                </div>
+                <p className="text-zinc-600 text-[11px] -mt-2">Nama panggilan jadi teks besar (layering) di hero.</p>
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Type className="w-3 h-3" /> Profesi / Role</label>
+                  <AutocompleteInput id="input-profesi" value={formData.tagline} onChange={(v) => updateField("tagline", v)} suggestions={PROFESI_OPTIONS} placeholder="contoh: UI/UX Designer" />
+                  <p className="text-zinc-600 text-[11px]">Pilih dari saran atau ketik sendiri. Tampil sebagai badge di hero.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><AlignLeft className="w-3 h-3" /> Bio / Tentang Saya</label>
+                  <textarea value={formData.keunggulan} onChange={(e) => updateField("keunggulan", e.target.value)} placeholder="Ceritakan dirimu singkat: fokus kerja, nilai, dan pendekatan..." rows={3} className={`${inputClass} resize-none`} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><MapPin className="w-3 h-3" /> Lokasi</label>
+                  <SearchableCombobox value={formData.lokasi} onChange={(v) => updateField("lokasi", v)} />
+                </div>
+                <div className="space-y-2.5 pt-1">
+                  <p className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider"><Phone className="w-3 h-3" /> Kontak</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">WhatsApp</label>
+                      <div
+                        className="relative"
+                        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setShowWaDropdown(false); }}
+                      >
+                        <div className="flex items-center bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-zinc-600 focus-within:border-zinc-600 transition-all duration-200">
+                          <button type="button" onClick={() => setShowWaDropdown((v) => !v)} className="flex items-center gap-1 px-2.5 py-2 text-zinc-300 text-[12px] font-medium flex-shrink-0 border-r border-zinc-800 hover:bg-zinc-800/60 transition-colors focus:outline-none">
+                            <span>{waCountryCode}</span>
+                            <ChevronDown className={`w-3 h-3 text-zinc-500 transition-transform duration-200 ${showWaDropdown ? "rotate-180" : ""}`} />
+                          </button>
+                          <input type="text" value={(() => { const digits = waCountryCode.replace("+", ""); return formData.nomorWhatsApp.startsWith(digits) ? formData.nomorWhatsApp.slice(digits.length) : formData.nomorWhatsApp; })()} onChange={(e) => { const local = e.target.value.replace(/\D/g, ""); updateField("nomorWhatsApp", waCountryCode.replace("+", "") + local); }} placeholder="" className="flex-1 bg-transparent px-3 py-2 text-[12px] text-zinc-100 focus:outline-none" />
+                        </div>
+                        {showWaDropdown && (
+                          <div className="absolute left-0 top-full mt-1 w-56 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+                            <div className="max-h-52 overflow-y-auto">
+                              {COUNTRY_CODES.map((c) => (
+                                <button key={c.code} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { const oldDigits = waCountryCode.replace("+", ""); const newDigits = c.code.replace("+", ""); const localNum = formData.nomorWhatsApp.startsWith(oldDigits) ? formData.nomorWhatsApp.slice(oldDigits.length) : formData.nomorWhatsApp; setWaCountryCode(c.code); updateField("nomorWhatsApp", newDigits + localNum); setShowWaDropdown(false); }} className={`w-full flex items-center gap-2.5 px-3 py-2 text-[12px] hover:bg-zinc-800 transition-colors text-left ${c.code === waCountryCode ? "bg-zinc-800/60 text-indigo-400" : "text-zinc-300"}`}>
+                                  <span className="text-[16px] leading-none flex-shrink-0">{c.flag}</span>
+                                  <span className="flex-1 truncate">{c.country}</span>
+                                  <span className="text-zinc-500 font-mono flex-shrink-0">{c.code}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Email</label>
+                      <input type="email" value={formData.email} onChange={(e) => updateField("email", e.target.value)} placeholder="kamu@email.com" className={`${inputClass} !py-2 !text-[12px]`} />
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2.5">
+                  <p className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider"><AtSign className="w-3 h-3" /> Sosial Media <span className="text-zinc-700 font-normal">(opsional)</span></p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Instagram</label>
+                      <div className="flex items-center bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-zinc-600 focus-within:border-zinc-600 transition-all duration-200">
+                        <span className="px-2.5 py-2 text-zinc-500 text-[12px] font-medium flex-shrink-0 border-r border-zinc-800 select-none">@</span>
+                        <input type="text" value={formData.instagram} onChange={(e) => updateField("instagram", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">LinkedIn</label>
+                      <input type="url" value={formData.linkedin} onChange={(e) => updateField("linkedin", e.target.value)} placeholder="https://linkedin.com/in/username" className={`${inputClass} !py-2 !text-[12px]`} />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">X (Twitter)</label>
+                    <div className="flex items-center bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-zinc-600 focus-within:border-zinc-600 transition-all duration-200">
+                      <span className="px-2.5 py-2 text-zinc-500 text-[12px] font-medium flex-shrink-0 border-r border-zinc-800 select-none">@</span>
+                      <input type="text" value={formData.x_twitter} onChange={(e) => updateField("x_twitter", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
+                    </div>
                   </div>
                 </div>
               </>
             )}
 
             {/* ═══ STEP 2 ═══ */}
-            {step === 1 && (
+            {step === 1 && formMode === "jasa" && (
               <>
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><AlignLeft className="w-3 h-3" /> Keunggulan Bisnis</label>
@@ -1074,9 +1475,9 @@ function BuatContent() {
                           </button>
                         </div>
                       </div>
-                      <input type="text" value={paket.namaPaket} onChange={(e) => updatePaket(idx, "namaPaket", e.target.value)}
+                      <input type="text" maxLength={40} value={paket.namaPaket} onChange={(e) => updatePaket(idx, "namaPaket", e.target.value)}
                         placeholder="contoh: Paket Hemat" className={`${inputClass} !py-2 !text-[12px]`} />
-                      <input type="text" value={paket.harga} onChange={(e) => updatePaket(idx, "harga", e.target.value)}
+                      <input type="text" maxLength={30} value={paket.harga} onChange={(e) => updatePaket(idx, "harga", e.target.value)}
                         placeholder="contoh: 150rb" className={`${inputClass} !py-2 !text-[12px]`} />
                       <div>
                         <p className="text-zinc-500 text-[10px] mb-1.5 uppercase tracking-wider font-medium">Fitur Paket</p>
@@ -1089,7 +1490,7 @@ function BuatContent() {
                               </button>
                             </span>
                           ))}
-                          <input type="text" placeholder="Ketik fitur + Enter"
+                          <input type="text" maxLength={50} placeholder="Ketik fitur + Enter"
                             className="flex-1 min-w-[100px] bg-transparent text-[11px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none py-0.5"
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
@@ -1119,6 +1520,123 @@ function BuatContent() {
               </>
             )}
 
+            {/* ═══ STEP 2 — PORTFOLIO ═══ */}
+            {step === 1 && formMode === "portfolio" && (
+              <>
+                {/* Keahlian — nama + deskripsi singkat per item */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Star className="w-3 h-3" /> Keahlian</label>
+                    <button type="button" onClick={addKeahlian} className="flex items-center gap-1 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer">
+                      <Plus className="w-3 h-3" /> Tambah Keahlian
+                    </button>
+                  </div>
+                  <p className="text-zinc-600 text-[11px] -mt-1">Nama keahlian + deskripsi singkat (5-10 kata) apa yang sudah kamu kerjakan dengan keahlian itu.</p>
+                  {formData.keahlianList.length === 0 && (
+                    <div className="text-center py-6 border border-dashed border-zinc-800 rounded-xl text-zinc-600 text-[12px]">
+                      Belum ada keahlian. Klik Tambah Keahlian.
+                    </div>
+                  )}
+                  {formData.keahlianList.map((k, idx) => (
+                    <div key={idx} className="border border-zinc-800 bg-zinc-900/60 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <input type="text" maxLength={40} value={k.nama} onChange={(e) => updateKeahlian(idx, "nama", e.target.value)} placeholder="contoh: UI/UX Design" className={`${inputClass} !py-2 !text-[12px] flex-1`} />
+                        <button type="button" onClick={() => removeKeahlian(idx)} className="p-1.5 rounded-md hover:bg-red-900/30 text-zinc-600 hover:text-red-400 transition-colors cursor-pointer flex-shrink-0">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <input type="text" maxLength={90} value={k.deskripsi} onChange={(e) => updateKeahlian(idx, "deskripsi", e.target.value)} placeholder="deskripsi singkat 5-10 kata (tampil di desktop)" className={`${inputClass} !py-2 !text-[12px]`} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Proyek */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><ImagePlus className="w-3 h-3" /> Proyek</label>
+                    <button type="button" onClick={addProyek} className="flex items-center gap-1 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer">
+                      <Plus className="w-3 h-3" /> Tambah Proyek
+                    </button>
+                  </div>
+                  {formData.proyekPortofolio.length === 0 && (
+                    <div className="text-center py-8 border border-dashed border-zinc-800 rounded-xl text-zinc-600 text-[12px]">
+                      Belum ada proyek. Klik Tambah Proyek.
+                    </div>
+                  )}
+                  {formData.proyekPortofolio.map((proyek, idx) => (
+                    <div key={idx} className="border border-zinc-800 bg-zinc-900/60 rounded-xl p-4 space-y-3">
+                      {/* Header */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Proyek {idx + 1}</span>
+                        <button type="button" onClick={() => removeProyek(idx)} className="p-1 rounded-md hover:bg-red-900/30 text-zinc-600 hover:text-red-400 transition-colors cursor-pointer">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Foto proyek */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Foto / Thumbnail</label>
+                        {proyek.foto ? (
+                          <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-zinc-700 group">
+                            <img src={proyek.foto} alt="" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => removeProyekFoto(idx)}
+                              className="absolute top-2 right-2 bg-black/60 hover:bg-red-900/80 text-white rounded-md p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center w-full aspect-video border border-dashed border-zinc-700 rounded-lg cursor-pointer hover:border-indigo-500/50 hover:bg-zinc-800/40 transition-colors group">
+                            <Camera className="w-6 h-6 text-zinc-600 group-hover:text-indigo-400 transition-colors mb-1.5" />
+                            <span className="text-[11px] text-zinc-600 group-hover:text-zinc-400">Upload foto proyek</span>
+                            <input type="file" accept={IMG_ACCEPT} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleProyekFoto(idx, f); }} />
+                          </label>
+                        )}
+                      </div>
+
+                      {/* Nama & Kategori */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Nama Proyek</label>
+                          <input type="text" value={proyek.namaProyek} onChange={(e) => updateProyek(idx, "namaProyek", e.target.value)} placeholder="contoh: Redesign App" className={`${inputClass} !py-2 !text-[12px]`} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Kategori / Tag</label>
+                          <input type="text" value={proyek.kategori} onChange={(e) => updateProyek(idx, "kategori", e.target.value)} placeholder="contoh: UI/UX" className={`${inputClass} !py-2 !text-[12px]`} />
+                        </div>
+                      </div>
+
+                      {/* Masalah & Peran */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Masalah / Tantangan</label>
+                          <textarea value={proyek.masalah} onChange={(e) => updateProyek(idx, "masalah", e.target.value)} placeholder="Apa masalah yang diselesaikan?" rows={2} className={`${inputClass} !py-2 !text-[12px] resize-none`} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Peranmu</label>
+                          <textarea value={proyek.peran} onChange={(e) => updateProyek(idx, "peran", e.target.value)} placeholder="Apa peran / tanggung jawabmu?" rows={2} className={`${inputClass} !py-2 !text-[12px] resize-none`} />
+                        </div>
+                      </div>
+
+                      {/* Solusi & Hasil */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Solusi</label>
+                          <textarea value={proyek.solusi} onChange={(e) => updateProyek(idx, "solusi", e.target.value)} placeholder="Solusi / pendekatan yang diambil" rows={2} className={`${inputClass} !py-2 !text-[12px] resize-none`} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Hasil</label>
+                          <textarea value={proyek.hasil} onChange={(e) => updateProyek(idx, "hasil", e.target.value)} placeholder="Hasil / dampak yang dicapai" rows={2} className={`${inputClass} !py-2 !text-[12px] resize-none`} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
             {/* ═══ STEP 3 ═══ */}
             {step === 2 && (
               <>
@@ -1130,7 +1648,7 @@ function BuatContent() {
                       const Icon = opt.icon; const isSelected = formData.tema === opt.value;
                       return (
                         <button key={opt.value} type="button" onClick={() => updateField("tema", opt.value)}
-                          className={`group flex flex-col items-center gap-2.5 p-5 rounded-xl border transition-all duration-200 cursor-pointer ${isSelected ? "bg-indigo-600/10 border-indigo-500/40 shadow-lg shadow-indigo-500/5" : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700"}`}>
+                          className={`group flex flex-col items-center gap-2.5 p-5 rounded-xl border transition-all duration-200 cursor-pointer ${isSelected ? "bg-indigo-600/10 border-indigo-500/40" : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700"}`}>
                           <div className={`w-12 h-12 rounded-xl border ${opt.preview} transition-all`} />
                           <div className="text-center">
                             <div className="flex items-center justify-center gap-1.5 mb-0.5">
@@ -1169,10 +1687,12 @@ function BuatContent() {
                   </div>
                 </div>
 
-                {/* Logo Upload */}
+                {/* Logo Upload — disembunyikan di mode portfolio (bukan bisnis) */}
+                {formMode !== "portfolio" && (
                 <div className="space-y-2.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><ImagePlus className="w-3 h-3" /> Logo Bisnis</label>
-                  <input ref={logoInputRef} type="file" accept="image/*" className="hidden"
+                  <p className="text-zinc-600 text-[10px] -mt-1">PNG, JPG, atau SVG.</p>
+                  <input ref={logoInputRef} type="file" accept={IMG_ACCEPT} className="hidden"
                     onChange={(e) => { if (e.target.files?.[0]) handleLogoSelect(e.target.files[0]); e.target.value = ""; }} />
                   {formData.logo ? (
                     <div className="flex items-center gap-3 bg-zinc-900/80 border border-zinc-800 rounded-xl p-3">
@@ -1198,13 +1718,47 @@ function BuatContent() {
                     </div>
                   )}
                 </div>
+                )}
 
-                {/* Foto Bisnis Upload */}
-                {selectedTemplateId !== 'jasa-001' && (
+                {/* Foto Pribadi — satu slot, dipakai untuk hero & profil (mode portfolio) */}
+                {formMode === "portfolio" ? (
+                <div className="space-y-2.5">
+                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Camera className="w-3 h-3" /> Foto Pribadi</label>
+                  <p className="text-zinc-600 text-[10px] -mt-1">Tanpa latar belakang (PNG transparan paling bagus).</p>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {[{ idx: 0, title: "Foto Hero", hint: "tampil di hero", tip: "Foto utama paling atas website, gambar besar pertama yang dilihat pengunjung." }, { idx: 1, title: "Foto About Me", hint: "section tentang", tip: "Foto di bagian 'Tentang Saya', biasanya foto diri yang lebih personal atau formal." }].map(({ idx, title, hint, tip }) => {
+                      const url = formData.fotoBisnis[idx];
+                      return (
+                        <div key={idx} className="space-y-1.5">
+                          <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider flex items-center gap-1">
+                            {title}
+                            <span title={tip} className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-zinc-600 text-zinc-500 text-[8px] cursor-help normal-case">?</span>
+                          </p>
+                          {url ? (
+                            <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-zinc-700 group">
+                              <img src={url} alt={title} className="w-full h-full object-contain bg-zinc-900" />
+                              <button type="button" onClick={() => removeFotoBisnisSlot(idx)} className="absolute top-2 right-2 bg-black/60 hover:bg-red-900/80 text-white rounded-md p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="flex flex-col items-center justify-center w-full aspect-[4/3] border-2 border-dashed border-zinc-800 rounded-xl cursor-pointer hover:border-indigo-500/50 hover:bg-zinc-800/40 transition-colors group text-center p-2">
+                              <Camera className="w-4 h-4 text-zinc-500 group-hover:text-indigo-400 transition-colors mb-1.5" />
+                              <span className="text-[11px] text-zinc-300 font-medium leading-tight">{title}</span>
+                              <span className="text-[9px] text-zinc-600 mt-0.5">{hint}</span>
+                              <input type="file" accept={IMG_ACCEPT} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFotoBisnisSlot(idx, f); e.target.value = ""; }} />
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                ) : selectedTemplateId !== 'jasa-001' ? (
                 <div className="space-y-2.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Camera className="w-3 h-3" /> Foto Bisnis</label>
-                  <p className="text-zinc-600 text-[10px] -mt-1">Suasana kerja, toko, atau tim Anda</p>
-                  <input ref={fotoBisnisInputRef} type="file" accept="image/*" multiple className="hidden"
+                  <p className="text-zinc-600 text-[10px] -mt-1">PNG, JPG, atau SVG. Suasana kerja, toko, atau tim Anda</p>
+                  <input ref={fotoBisnisInputRef} type="file" accept={IMG_ACCEPT} multiple className="hidden"
                     onChange={(e) => { if (e.target.files) handlePhotosSelect(e.target.files, "fotoBisnis"); e.target.value = ""; }} />
                   <div onClick={() => fotoBisnisInputRef.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, "fotoBisnis")}
                     className="border-2 border-dashed border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors group cursor-pointer">
@@ -1230,14 +1784,24 @@ function BuatContent() {
                     </div>
                   )}
                 </div>
-                )}
+                ) : null}
 
-                {/* Portofolio Upload */}
-                <div className="space-y-2.5">
+                {/* Portofolio: mode portfolio ambil dari foto proyek (step 2), jadi uploader disembunyikan */}
+                {formMode === "portfolio" ? (
+                <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Upload className="w-3 h-3" /> Foto Portofolio</label>
-                  <p className="text-zinc-600 text-[10px] -mt-1">Hasil karya atau proyek yang sudah selesai</p>
-                  <input ref={portofolioInputRef} type="file" accept="image/*" multiple className="hidden"
+                  <p className="text-zinc-600 text-[11px] bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">Foto portofolio diambil otomatis dari <span className="text-indigo-400">Foto Proyek</span> di step 2. Tambah/ubah proyek di sana.</p>
+                </div>
+                ) : (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Upload className="w-3 h-3" /> Foto Portofolio</label>
+                    <span className="text-[10px] font-medium text-zinc-500 tabular-nums">{formData.portofolio.length}/{MAX_PORTOFOLIO}</span>
+                  </div>
+                  <p className="text-zinc-600 text-[10px] -mt-1">PNG, JPG, atau SVG. Hasil karya atau proyek yang sudah selesai.</p>
+                  <input ref={portofolioInputRef} type="file" accept={IMG_ACCEPT} multiple className="hidden"
                     onChange={(e) => { if (e.target.files) handlePhotosSelect(e.target.files, "portofolio"); e.target.value = ""; }} />
+                  {formData.portofolio.length < MAX_PORTOFOLIO && (
                   <div onClick={() => portofolioInputRef.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, "portofolio")}
                     className="border-2 border-dashed border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors group cursor-pointer">
                     <div className="flex flex-col items-center text-center">
@@ -1248,6 +1812,7 @@ function BuatContent() {
                       <p className="text-[10px] text-zinc-600">Seret atau <span className="text-indigo-400">klik untuk upload</span></p>
                     </div>
                   </div>
+                  )}
                   {formData.portofolio.length > 0 && (
                     <div className="grid grid-cols-4 gap-2">
                       {formData.portofolio.map((url, i) => (
@@ -1262,6 +1827,7 @@ function BuatContent() {
                     </div>
                   )}
                 </div>
+                )}
               </>
             )}
 
@@ -1277,7 +1843,7 @@ function BuatContent() {
                 </button>
               )}
               {step < 2 ? (
-                <button type="button" onClick={() => setStep((s) => s + 1)} disabled={!canProceed()} className={`flex-1 flex items-center justify-center gap-1.5 font-medium text-[13px] py-3 rounded-xl transition-all duration-200 cursor-pointer ${canProceed() ? "bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20" : "bg-zinc-800 text-zinc-100 opacity-40 cursor-not-allowed"}`}>
+                <button type="button" onClick={() => setStep((s) => s + 1)} disabled={!canProceed()} className={`flex-1 flex items-center justify-center gap-1.5 font-medium text-[13px] py-3 rounded-xl transition-all duration-200 cursor-pointer ${canProceed() ? "bg-indigo-600 text-white hover:bg-indigo-500" : "bg-zinc-800 text-zinc-100 opacity-40 cursor-not-allowed"}`}>
                   Lanjut <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               ) : idParam ? (
@@ -1285,12 +1851,12 @@ function BuatContent() {
                   <button type="button" onClick={() => { setProjectName(formData.namaBisnis || ""); setSaveActionType("generate"); setShowSavePrompt(true); }} disabled={!canProceed() || isLoading} className="flex-1 flex items-center justify-center gap-2 bg-zinc-800 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer border border-zinc-700">
                     {isOptimizing ? (<><Loader2 className="w-4 h-4 animate-spin" /> Mengoptimalkan gambar...</>) : isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Memproses...</>) : ("Generate Ulang")}
                   </button>
-                  <button type="button" onClick={() => { setProjectName(formData.namaBisnis || ""); setSaveActionType("update"); setShowSavePrompt(true); }} disabled={!canProceed() || isLoading || !checkHasChanges()} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-600/20 cursor-pointer">
+                  <button type="button" onClick={() => { setProjectName(formData.namaBisnis || ""); setSaveActionType("update"); setShowSavePrompt(true); }} disabled={!canProceed() || isLoading || !checkHasChanges()} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">
                     {isOptimizing ? (<><Loader2 className="w-4 h-4 animate-spin" /> Mengoptimalkan gambar...</>) : isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Mengupload...</>) : ("Simpan Perubahan")}
                   </button>
                 </div>
               ) : (
-                <button id="btn-generate" type="button" onClick={() => { setProjectName(formData.namaBisnis || ""); setSaveActionType("generate"); setShowSavePrompt(true); }} disabled={!canProceed() || isLoading} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-indigo-600/20 disabled:shadow-none cursor-pointer">
+                <button id="btn-generate" type="button" onClick={() => { setProjectName(formData.namaBisnis || ""); setSaveActionType("generate"); setShowSavePrompt(true); }} disabled={!canProceed() || isLoading} className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 disabled:shadow-none cursor-pointer">
                   {isOptimizing ? (<><Loader2 className="w-4 h-4 animate-spin" /> Mengoptimalkan gambar...</>) : isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" /> Mengupload...</>) : ("Generate Website")}
                 </button>
               )}
@@ -1301,7 +1867,7 @@ function BuatContent() {
               <button 
                 type="button" 
                 onClick={() => setShowDeployModal(true)}
-                className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-600/20 cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white font-medium text-[13px] py-3.5 rounded-xl hover:bg-emerald-500 transition-all cursor-pointer"
               >
                 <Rocket className="w-4 h-4" /> Deploy Sekarang &rarr;
               </button>
@@ -1357,7 +1923,15 @@ function BuatContent() {
                   </div>
                   <div className="w-[52px]" />
                 </div>
-                <div className={`flex-1 overflow-y-auto ${templateData?.warna?.tema === "dark" ? "bg-zinc-950" : "bg-white"}`}>{templateData ? <TemplateSatu {...templateData} forceMobile={false} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} /> : <EmptyState />}</div>
+                <div ref={desktopFrameRef} className={`flex-1 overflow-y-auto overflow-x-hidden ${templateData?.warna?.tema === "dark" ? "bg-zinc-950" : "bg-white"}`}>
+                  {templateData ? (
+                    <div style={{ height: desktopContentHeight ? desktopContentHeight * desktopScale : undefined }}>
+                      <div ref={desktopContentRef} style={{ width: desktopWidth, transform: `scale(${desktopScale})`, transformOrigin: "top left" }}>
+                        <TemplateComponent {...templateData} forceMobile={false} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} />
+                      </div>
+                    </div>
+                  ) : <EmptyState />}
+                </div>
                 {isBuilding && <BuildingOverlay onCancel={() => { abortControllerRef.current?.abort(); setIsBuilding(false); setIsLoading(false); }} />}
               </div>
             </div>
@@ -1369,7 +1943,7 @@ function BuatContent() {
                       <div className="w-3 h-3 rounded-full bg-zinc-800 border border-zinc-700 mr-2" /><div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                     </div>
                   </div>
-                  <div className="h-full w-full overflow-y-auto">{templateData ? <TemplateSatu {...templateData} forceMobile={true} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} /> : <EmptyState />}</div>
+                  <div className="h-full w-full overflow-y-auto overflow-x-hidden">{templateData ? <TemplateComponent {...templateData} forceMobile={true} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} /> : <EmptyState />}</div>
                   <div className={`flex-shrink-0 flex justify-center py-2 ${templateData?.warna?.tema === "dark" ? "bg-zinc-950" : "bg-white"}`}><div className={`w-32 h-1 rounded-full ${templateData?.warna?.tema === "dark" ? "bg-zinc-700" : "bg-zinc-300"}`} /></div>
                   {isBuilding && <BuildingOverlay onCancel={() => { abortControllerRef.current?.abort(); setIsBuilding(false); setIsLoading(false); }} />}
                 </div>
@@ -1377,8 +1951,8 @@ function BuatContent() {
             </div>
             {/* ── Mobile-only: direct inline preview (no device frame) ── */}
             <div className="md:hidden w-full h-full flex flex-col rounded-xl border border-zinc-800 overflow-hidden relative">
-              <div className={`flex-1 overflow-y-auto ${templateData?.warna?.tema === "dark" ? "bg-zinc-950" : "bg-white"}`}>
-                {templateData ? <TemplateSatu {...templateData} forceMobile={true} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} /> : <EmptyState />}
+              <div className={`flex-1 overflow-y-auto overflow-x-hidden ${templateData?.warna?.tema === "dark" ? "bg-zinc-950" : "bg-white"}`}>
+                {templateData ? <TemplateComponent {...templateData} forceMobile={true} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} /> : <EmptyState />}
               </div>
               {isBuilding && <BuildingOverlay onCancel={() => { abortControllerRef.current?.abort(); setIsBuilding(false); setIsLoading(false); }} />}
             </div>
@@ -1496,7 +2070,7 @@ function BuatContent() {
                     href={`https://${deploySubdomain}.buatkanweb.id`}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-full text-center bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 rounded-xl transition-colors shadow-lg shadow-emerald-600/20"
+                    className="w-full text-center bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 rounded-xl transition-colors"
                   >
                     Buka Website &rarr;
                   </a>
@@ -1552,7 +2126,7 @@ function BuatContent() {
                     type="button"
                     onClick={handleDeploy}
                     disabled={deployStatus !== 'available' || deploySubdomain.length < 3}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-xl transition-colors cursor-pointer shadow-lg shadow-emerald-600/20"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-xl transition-colors cursor-pointer"
                   >
                     {deployStatus === 'deploying' ? (
                       <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Mandeploy...</span>
@@ -1619,7 +2193,7 @@ function BuatContent() {
                           </button>
                           <button
                               onClick={handleBayarSekarang}
-                              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 rounded-xl transition-colors shadow-lg shadow-emerald-600/20 cursor-pointer"
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 rounded-xl transition-colors cursor-pointer"
                           >
                               Bayar Sekarang
                           </button>

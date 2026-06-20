@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { getClientIp, getActiveBan } from '@/lib/ip'
 
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url)
     const code = searchParams.get('code')
+
+    // next: hanya path relatif (cegah open redirect). Default /dashboard.
+    const nextParam = searchParams.get('next')
+    const next = nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//')
+        ? nextParam
+        : '/dashboard'
+
+    // IP ban — blokir login/daftar via Google dari jaringan terblokir.
+    if (await getActiveBan(getClientIp(request))) {
+        return NextResponse.redirect(`${origin}/auth/login?error=ip_banned`)
+    }
 
     if (code) {
         const cookieStore = await cookies()
@@ -31,9 +43,9 @@ export async function GET(request: Request) {
 
         const { error } = await supabase.auth.exchangeCodeForSession(code)
         if (!error) {
-            // Gunakan origin dari request — otomatis 
+            // Gunakan origin dari request — otomatis
             // localhost saat dev, production saat live
-            return NextResponse.redirect(`${origin}/dashboard`)
+            return NextResponse.redirect(`${origin}${next}`)
         }
     }
 

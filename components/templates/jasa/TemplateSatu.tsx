@@ -378,24 +378,51 @@ export default function TemplateSatu(props: Props) {
       {/* ── Tentang Kami ── */}
       <section id="tentang" className={`${isMob ? "py-20" : isDesk ? "py-32" : "py-20 md:py-32"}`}>
         <div className={`max-w-7xl mx-auto ${isMob ? "px-4" : isDesk ? "px-6" : "px-4 md:px-6"}`}>
-          <div className={`flex ${isMob ? "flex-col gap-10" : isDesk ? "flex-row gap-20" : "flex-col md:flex-row gap-10 md:gap-20"}`}>
-            <div className="flex-1">
-              <h2 className={`font-normal tracking-tight leading-[1.2] ${textPrimary} ${isMob ? "text-3xl mb-6" : isDesk ? "text-[36px] mb-8" : "text-3xl md:text-[36px] mb-6 md:mb-8"}`}>
-                <EditableText value={editedAboutJudul} onChange={(v) => { setEditedAboutJudul(v); markChanged(); }} isEditMode={em} as="span" />
-              </h2>
-              <EditableText value={editedAboutDeskripsi} onChange={(v) => { setEditedAboutDeskripsi(v); markChanged(); }} isEditMode={em} as="p" multiline className={`${textMuted} leading-relaxed text-[15px]`} />
-            </div>
-            <div className="flex-1 flex flex-col justify-center">
-              <div className={`border-l ${hairline} pl-6 md:pl-10 space-y-6 md:space-y-8`}>
-                {about.keunggulan.map((k, i) => (
-                  <div key={i}>
-                    <p className={`text-[12px] font-mono mb-2 ${textMuted}`}>0{i + 1}</p>
-                    <EditableText value={editedAboutKeunggulan[i] ?? k} onChange={(v) => { const a = [...editedAboutKeunggulan]; a[i] = v; setEditedAboutKeunggulan(a); markChanged(); }} isEditMode={em} as="p" className={`font-normal text-[18px] ${textPrimary}`} />
-                  </div>
-                ))}
+          {photos.length > 0 ? (
+            /* ─ Ada foto bisnis: foto kiri, teks + grid kanan ─ */
+            <div className={`flex ${isMob ? "flex-col gap-10" : isDesk ? "flex-row gap-16 items-start" : "flex-col md:flex-row gap-10 md:gap-16 md:items-start"}`}>
+              <div className={`${isMob ? "w-full" : isDesk ? "w-[38%]" : "w-full md:w-[38%]"} flex-shrink-0`}>
+                <img
+                  src={photos[0]}
+                  alt={namaBisnis}
+                  className={`w-full object-cover rounded-lg ${isMob ? "aspect-[4/3]" : "aspect-[4/5]"}`}
+                  loading="lazy"
+                />
+              </div>
+              <div className="flex-1 flex flex-col justify-center">
+                <h2 className={`font-normal tracking-tight leading-[1.2] ${textPrimary} ${isMob ? "text-3xl mb-5" : isDesk ? "text-[36px] mb-6" : "text-3xl md:text-[36px] mb-5 md:mb-6"}`}>
+                  <EditableText value={editedAboutJudul} onChange={(v) => { setEditedAboutJudul(v); markChanged(); }} isEditMode={em} as="span" />
+                </h2>
+                <EditableText value={editedAboutDeskripsi} onChange={(v) => { setEditedAboutDeskripsi(v); markChanged(); }} isEditMode={em} as="p" multiline className={`${textMuted} leading-relaxed text-[15px] mb-10`} />
+                <div className={`grid grid-cols-2 border-t border-l ${hairline}`}>
+                  {about.keunggulan.map((k, i) => (
+                    <div key={i} className={`border-b border-r ${hairline} p-5`}>
+                      <EditableText value={editedAboutKeunggulan[i] ?? k} onChange={(v) => { const a = [...editedAboutKeunggulan]; a[i] = v; setEditedAboutKeunggulan(a); markChanged(); }} isEditMode={em} as="p" className={`font-normal text-[14px] leading-snug ${textPrimary}`} />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            /* ─ Tanpa foto: teks kiri, grid kanan ─ */
+            <div className={`flex ${isMob ? "flex-col gap-10" : isDesk ? "flex-row gap-20" : "flex-col md:flex-row gap-10 md:gap-20"}`}>
+              <div className="flex-1">
+                <h2 className={`font-normal tracking-tight leading-[1.2] ${textPrimary} ${isMob ? "text-3xl mb-6" : isDesk ? "text-[36px] mb-8" : "text-3xl md:text-[36px] mb-6 md:mb-8"}`}>
+                  <EditableText value={editedAboutJudul} onChange={(v) => { setEditedAboutJudul(v); markChanged(); }} isEditMode={em} as="span" />
+                </h2>
+                <EditableText value={editedAboutDeskripsi} onChange={(v) => { setEditedAboutDeskripsi(v); markChanged(); }} isEditMode={em} as="p" multiline className={`${textMuted} leading-relaxed text-[15px]`} />
+              </div>
+              <div className="flex-1 flex flex-col justify-center">
+                <div className={`grid grid-cols-2 border-t border-l ${hairline}`}>
+                  {about.keunggulan.map((k, i) => (
+                    <div key={i} className={`border-b border-r ${hairline} p-5 md:p-7`}>
+                      <EditableText value={editedAboutKeunggulan[i] ?? k} onChange={(v) => { const a = [...editedAboutKeunggulan]; a[i] = v; setEditedAboutKeunggulan(a); markChanged(); }} isEditMode={em} as="p" className={`font-normal text-[15px] md:text-[17px] leading-snug ${textPrimary}`} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

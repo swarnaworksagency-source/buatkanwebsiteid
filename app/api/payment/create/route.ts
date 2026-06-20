@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { websiteIdSchema } from '@/lib/validations';
 
 export async function POST(request: Request) {
   try {
-    const { websiteId } = await request.json();
-    
-    if (!websiteId) {
-      return NextResponse.json({ error: 'websiteId is required' }, { status: 400 });
+    const parsed = websiteIdSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'websiteId tidak valid.' }, { status: 400 });
     }
+    const { websiteId } = parsed.data;
 
     const cookieStore = await cookies();
     const supabase = createServerClient(

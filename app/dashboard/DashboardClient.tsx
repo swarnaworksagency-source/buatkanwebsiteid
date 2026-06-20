@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { LogOut, Plus, Eye, RefreshCw, Clock, Globe, Trash2, Loader2, Edit2, Check, X, Rocket, ExternalLink, AlertCircle, CheckCircle2, Settings } from 'lucide-react'
+import { LogOut, Plus, Clock, Loader2, Edit2, Check, X, Rocket, ExternalLink, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 
 
@@ -53,11 +53,11 @@ function getDaysLeft(expiresAt: string | null): number {
 function getStatusBadge(status: string) {
     switch (status) {
         case 'active':
-            return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">● Aktif</span>
+            return <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-[0.12em] bg-emerald-500/10 text-emerald-400">Aktif</span>
         case 'preview':
-            return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">● Preview</span>
+            return <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-[0.12em] bg-amber-500/10 text-amber-400">Preview</span>
         case 'expired':
-            return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-500/15 text-red-400 border border-red-500/20">● Expired</span>
+            return <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-[0.12em] bg-red-500/10 text-red-400">Expired</span>
         default:
             return null
     }
@@ -135,6 +135,7 @@ export default function DashboardClient({
             .select('*, websites(id, nama_usaha, subdomain)')
             .eq('user_id', user.id)
             .eq('status', 'pending')
+            .is('deleted_at', null)
             .order('created_at', { ascending: false })
         
         if (data) setPendingPayments(data)
@@ -344,6 +345,7 @@ export default function DashboardClient({
                 .select('id, status')
                 .eq('website_id', deployingWebsite.id)
                 .eq('status', 'paid')
+                .is('deleted_at', null)
                 .maybeSingle()
             
             if (error) throw error;
@@ -659,7 +661,6 @@ export default function DashboardClient({
                                 disabled
                                 className="w-full flex items-center justify-center gap-3 bg-[#1a1a1a] text-[#71717a] font-bold text-[15px] px-8 py-4 rounded-2xl cursor-not-allowed border border-[#27272a]"
                             >
-                                <Globe className="w-5 h-5" />
                                 Batas Website Tercapai (6/6)
                             </button>
                             <p className="text-zinc-500 text-[12px] text-center sm:text-left mt-2.5 ml-2">Hapus website preview untuk membuat baru</p>
@@ -693,9 +694,7 @@ export default function DashboardClient({
                     {websites.length === 0 ? (
                         /* Empty State */
                         <div className="bg-[#18181b] border border-zinc-800/80 border-dashed rounded-2xl p-10 sm:p-16 text-center">
-                            <div className="w-16 h-16 bg-[#1E466B]/15 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                                <Globe className="w-7 h-7 text-[#67BAF4]" />
-                            </div>
+
                             <h3 className="text-white text-lg font-bold mb-2">Belum ada website</h3>
                             <p className="text-zinc-500 text-[14px] mb-6 max-w-sm mx-auto">
                                 Yuk buat website pertamamu! Cukup isi form sederhana dan website profesionalmu siap dalam 5 menit.
@@ -817,9 +816,8 @@ export default function DashboardClient({
 
                                         {/* Countdown for preview */}
                                         {site.status === 'preview' && site.expires_at && (
-                                            <div className="flex items-center gap-1.5 mb-4 text-amber-400/80 text-[12px] font-medium">
-                                                <Clock className="w-3.5 h-3.5" />
-                                                Sisa {daysLeft} hari preview
+                                            <div className="mb-4 text-amber-400/80 text-[12px] font-medium">
+                                                Sisa {daysLeft} hari masa preview
                                             </div>
                                         )}
 
@@ -831,7 +829,6 @@ export default function DashboardClient({
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-1.5 mb-4 text-[#67BAF4] text-[12px] font-medium hover:underline transition-colors"
                                             >
-                                                <Globe className="w-3.5 h-3.5" />
                                                 {site.subdomain}.{MAIN_DOMAIN}
                                                 <ExternalLink className="w-3 h-3" />
                                             </a>
@@ -845,9 +842,8 @@ export default function DashboardClient({
                                             {site.status === 'expired' ? (
                                                 <Link
                                                     href="/#harga"
-                                                    className="flex items-center justify-center gap-2 bg-[#1E466B] hover:bg-[#255580] text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all"
+                                                    className="flex items-center justify-center bg-[#1E466B] hover:bg-[#255580] text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all"
                                                 >
-                                                    <RefreshCw className="w-3.5 h-3.5" />
                                                     Perpanjang
                                                 </Link>
                                             ) : site.status === 'active' ? (
@@ -857,18 +853,16 @@ export default function DashboardClient({
                                                             href={`https://${site.subdomain}.${MAIN_DOMAIN}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="flex items-center justify-center gap-2 bg-gradient-to-r from-[#1E466B] to-[#67BAF4] hover:from-[#255580] hover:to-[#67BAF4] text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all shadow-lg shadow-[#1E466B]/20"
+                                                            className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-[#1E466B] to-[#67BAF4] hover:from-[#255580] hover:to-[#67BAF4] text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all shadow-lg shadow-[#1E466B]/20"
                                                         >
-                                                            <Globe className="w-3.5 h-3.5" />
                                                             Kunjungi Website
                                                             <ExternalLink className="w-3 h-3" />
                                                         </a>
                                                     )}
                                                     <Link
                                                         href={`/buat?id=${site.id}`}
-                                                        className="flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all"
+                                                        className="flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all"
                                                     >
-                                                        <Settings className="w-3.5 h-3.5" />
                                                         Kelola
                                                     </Link>
                                                 </>
@@ -877,27 +871,24 @@ export default function DashboardClient({
                                                 <>
                                                     <button
                                                         onClick={(e) => { e.preventDefault(); openDeployModal(site) }}
-                                                        className="flex items-center justify-center gap-2 bg-gradient-to-r from-[#1E466B] to-[#67BAF4] hover:from-[#255580] hover:to-[#67BAF4] text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all shadow-lg shadow-[#1E466B]/20 cursor-pointer"
+                                                        className="flex items-center justify-center bg-gradient-to-r from-[#1E466B] to-[#67BAF4] hover:from-[#255580] hover:to-[#67BAF4] text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all shadow-lg shadow-[#1E466B]/20 cursor-pointer"
                                                     >
-                                                        <Rocket className="w-3.5 h-3.5" />
                                                         Deploy Sekarang
                                                     </button>
                                                     <Link
                                                         href={`/buat?id=${site.id}`}
-                                                        className="flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all"
+                                                        className="flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all"
                                                     >
-                                                        <Eye className="w-3.5 h-3.5" />
                                                         Lihat Preview
                                                     </Link>
                                                 </>
                                             )}
-                                            
+
                                             <div className="flex justify-end mt-1">
                                                 <button
                                                     onClick={(e) => { e.preventDefault(); setDeletingWebsite(site); setDeleteChecked(false); }}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/30 text-red-500 text-[12px] font-medium hover:bg-red-500/10 transition-colors"
+                                                    className="px-3 py-1.5 rounded-lg text-zinc-500 text-[12px] font-medium hover:text-red-400 hover:bg-red-500/10 transition-colors"
                                                 >
-                                                    <Trash2 className="w-3.5 h-3.5" />
                                                     Hapus
                                                 </button>
                                             </div>
@@ -1019,7 +1010,6 @@ export default function DashboardClient({
                                         rel="noopener noreferrer"
                                         className="inline-flex items-center gap-2 bg-[#1E466B]/20 hover:bg-[#1E466B]/30 border border-[#1E466B]/40 text-[#67BAF4] font-semibold text-[14px] px-5 py-3 rounded-xl transition-colors"
                                     >
-                                        <Globe className="w-4 h-4" />
                                         {deploySuccess.subdomain}.{MAIN_DOMAIN}
                                         <ExternalLink className="w-3.5 h-3.5" />
                                     </a>

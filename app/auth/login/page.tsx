@@ -4,27 +4,54 @@ import { useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { Plus_Jakarta_Sans } from 'next/font/google'
+
+const jakarta = Plus_Jakarta_Sans({
+    subsets: ['latin'],
+    weight: ['300', '400', '500', '600', '700', '800'],
+    display: 'swap',
+})
 
 function LoginContent() {
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [showPassword, setShowPassword] = useState(false)
-    const [loading, setLoading] = useState(false)
-    const [googleLoading, setGoogleLoading] = useState(false)
-    const [error, setError] = useState('')
     const router = useRouter()
     const searchParams = useSearchParams()
     const nextUrl = searchParams.get('next') || '/dashboard'
     const supabase = createClient()
 
+    const urlError = searchParams.get('error')
+    const initialError = urlError === 'ip_banned' ? 'Akses dari jaringan ini diblokir.'
+        : urlError === 'auth_failed' ? 'Gagal masuk. Coba lagi.'
+        : ''
+    const resetSuccess = searchParams.get('reset') === 'success'
+
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [showPassword, setShowPassword] = useState(false)
+    const [loading, setLoading] = useState(false)
+    const [googleLoading, setGoogleLoading] = useState(false)
+    const [error, setError] = useState(initialError)
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
         setLoading(true)
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) {
-            setError(error.message === 'Invalid login credentials' ? 'Email atau password salah' : error.message)
+        // Lewat server route /api/auth/login supaya bisa cek IP ban
+        // (login langsung ke Supabase dari browser tak bisa diblokir per IP).
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            })
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) {
+                setError(data?.error || 'Email atau password salah')
+                setLoading(false)
+                return
+            }
+        } catch {
+            setError('Gagal terhubung ke server. Coba lagi.')
             setLoading(false)
             return
         }
@@ -43,7 +70,7 @@ function LoginContent() {
         setGoogleLoading(true)
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
-            options: { 
+            options: {
                 redirectTo: getRedirectUrl(),
                 queryParams: {
                     access_type: 'offline',
@@ -55,29 +82,102 @@ function LoginContent() {
     }
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] flex flex-col relative overflow-hidden">
-            <div className="absolute inset-0 z-0">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#111827] via-[#0a0a0a] to-[#0a0a0a]" />
-                <div className="absolute top-[30%] left-[15%] w-[500px] h-[500px] rounded-full bg-[#1E466B]/15 blur-[150px]" />
-                <div className="absolute bottom-[20%] right-[15%] w-[400px] h-[400px] rounded-full bg-[#67BAF4]/10 blur-[120px]" />
-            </div>
+        <div className={`min-h-screen bg-[#0a0a0a] flex items-center justify-center p-3 sm:p-8 ${jakarta.className}`}>
+            <div className="relative w-full max-w-[1000px] bg-[#0f1115] border border-zinc-800/80 rounded-[24px] shadow-2xl shadow-black/60 p-3 sm:p-4 grid grid-cols-1 md:grid-cols-12 gap-0 overflow-hidden">
 
-            <div className="relative z-10 px-5 sm:px-8 pt-6">
-                <Link href="/" className="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-[13px] font-medium group">
-                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-                    Kembali
-                </Link>
-            </div>
+                {/* LEFT: inset mesh gradient panel */}
+                <div className="flex md:col-span-5 relative rounded-2xl p-5 md:p-8 flex-col justify-between min-h-[96px] md:min-h-[560px] overflow-hidden mesh-panel">
+                    <style>{`
+                        .mesh-panel {
+                            background-color: #0d2438;
+                            background-image:
+                                radial-gradient(at 18% 22%, #1E466B 0px, transparent 55%),
+                                radial-gradient(at 82% 8%, #255580 0px, transparent 50%),
+                                radial-gradient(at 12% 85%, #67BAF4 0px, transparent 50%),
+                                radial-gradient(at 88% 80%, #123047 0px, transparent 55%),
+                                radial-gradient(at 55% 50%, #2c6596 0px, transparent 45%);
+                        }
+                        .mesh-blob {
+                            position: absolute;
+                            border-radius: 9999px;
+                            filter: blur(52px);
+                            mix-blend-mode: screen;
+                            will-change: transform;
+                        }
+                        .mesh-blob-1 { width: 320px; height: 320px; background: #255580; top: -60px; left: -40px; opacity: .7; animation: meshFloat1 14s ease-in-out infinite; }
+                        .mesh-blob-2 { width: 280px; height: 280px; background: #67BAF4; bottom: -50px; right: -30px; opacity: .55; animation: meshFloat2 18s ease-in-out infinite; }
+                        .mesh-blob-3 { width: 240px; height: 240px; background: #1E466B; top: 40%; left: 30%; opacity: .6; animation: meshFloat3 16s ease-in-out infinite; }
+                        @keyframes meshFloat1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,50px) scale(1.15); } }
+                        @keyframes meshFloat2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-50px,-40px) scale(1.2); } }
+                        @keyframes meshFloat3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(30px,-50px) scale(.9); } }
+                        @media (prefers-reduced-motion: reduce) { .mesh-blob { animation: none; } }
+                    `}</style>
+                    <div className="mesh-blob mesh-blob-1" />
+                    <div className="mesh-blob mesh-blob-2" />
+                    <div className="mesh-blob mesh-blob-3" />
 
-            <div className="relative z-10 flex-1 flex items-center justify-center px-5 py-12">
-                <div className="w-full max-w-[420px]">
-                    <div className="text-center mb-8">
-                        <Link href="/" className="inline-flex items-center gap-2.5 mb-4">
+                    <div className="relative z-10">
+                        <Link href="/" className="inline-flex items-center gap-2.5">
                             <img src="/Logo buatkanweb.webp" alt="BuatkanWeb.id" className="w-9 h-9 rounded-lg object-contain" />
                             <span className="font-bold text-lg tracking-tight text-white">BuatkanWeb<span className="text-[#67BAF4]">.id</span></span>
                         </Link>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Masuk ke Akun</h1>
-                        <p className="text-zinc-400 text-[14px] mt-2">Selamat datang kembali! Masuk untuk melanjutkan.</p>
+                    </div>
+                    <div className="relative z-10 hidden md:block">
+                        <p className="text-white/80 text-sm font-medium mb-2">Senang melihatmu lagi</p>
+                        <h2 className="text-white text-xl md:text-3xl font-bold leading-tight tracking-tight">
+                            Lanjutkan membangun website bisnismu, semua dalam satu tempat.
+                        </h2>
+                    </div>
+                </div>
+
+                {/* RIGHT: form */}
+                <div className="md:col-span-7 flex flex-col justify-center px-2 py-4 sm:px-8 md:px-16 md:py-12">
+                    <Link href="/" className="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-[13px] font-medium group mb-4 sm:mb-6">
+                        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                        Kembali
+                    </Link>
+
+                    <div className="mb-4 sm:mb-7">
+                        <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Masuk ke Akun</h1>
+                        <p className="text-zinc-400 text-[14px] mt-2 leading-relaxed">Selamat datang kembali! Masuk untuk melanjutkan mengelola website-mu.</p>
+                    </div>
+
+                    {resetSuccess && !error && <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[13px] text-center">Password berhasil diubah. Silakan masuk dengan password baru.</div>}
+
+                    {error && <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[13px] text-center">{error}</div>}
+
+                    <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4" suppressHydrationWarning>
+                        <div>
+                            <label className="block text-zinc-300 text-[13px] font-semibold mb-1.5">Email</label>
+                            <input id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} suppressHydrationWarning
+                                placeholder="email@contoh.com" required
+                                className="w-full bg-zinc-900/80 border border-zinc-800 text-white placeholder-zinc-600 text-[14px] py-3 px-4 rounded-xl focus:outline-none focus:border-[#67BAF4]/50 focus:ring-2 focus:ring-[#67BAF4]/20 transition-all" />
+                        </div>
+                        <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-zinc-300 text-[13px] font-semibold">Password</label>
+                                <Link href="/auth/forgot-password" className="text-[12px] text-[#67BAF4] hover:text-[#89cff0] font-semibold transition-colors">Lupa password?</Link>
+                            </div>
+                            <div className="relative">
+                                <input id="login-password" type={showPassword ? 'text' : 'password'} value={password} suppressHydrationWarning
+                                    onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required
+                                    className="w-full bg-zinc-900/80 border border-zinc-800 text-white placeholder-zinc-600 text-[14px] py-3 pl-4 pr-12 rounded-xl focus:outline-none focus:border-[#67BAF4]/50 focus:ring-2 focus:ring-[#67BAF4]/20 transition-all" />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer">
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                            </div>
+                        </div>
+                        <button id="login-submit" type="submit" disabled={loading}
+                            className="w-full bg-gradient-to-b from-[#255580] to-[#1E466B] hover:from-[#2c6596] hover:to-[#255580] text-white font-bold text-[14px] py-3 px-4 rounded-xl transition-all duration-200 border border-white/10 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+                            {loading ? <span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Memproses...</span> : 'Masuk'}
+                        </button>
+                    </form>
+
+                    <div className="flex items-center gap-3 my-4 sm:my-6">
+                        <div className="flex-1 h-px bg-zinc-800" />
+                        <span className="text-zinc-500 text-[12px] font-medium">atau lanjutkan dengan</span>
+                        <div className="flex-1 h-px bg-zinc-800" />
                     </div>
 
                     <button type="button" onClick={handleGoogleLogin} disabled={googleLoading}
@@ -93,44 +193,7 @@ function LoginContent() {
                         Masuk dengan Google
                     </button>
 
-                    <div className="flex items-center gap-3 my-6">
-                        <div className="flex-1 h-px bg-zinc-800" />
-                        <span className="text-zinc-500 text-[12px] font-medium">atau</span>
-                        <div className="flex-1 h-px bg-zinc-800" />
-                    </div>
-
-                    {error && <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[13px] text-center">{error}</div>}
-
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        <div>
-                            <label className="block text-zinc-300 text-[13px] font-medium mb-1.5">Email</label>
-                            <div className="relative">
-                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                <input id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="email@contoh.com" required
-                                    className="w-full bg-zinc-900/80 border border-zinc-800 text-white placeholder-zinc-600 text-[14px] py-3 pl-10 pr-4 rounded-xl focus:outline-none focus:border-[#67BAF4]/50 focus:ring-1 focus:ring-[#67BAF4]/20 transition-all" />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-zinc-300 text-[13px] font-medium mb-1.5">Password</label>
-                            <div className="relative">
-                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                <input id="login-password" type={showPassword ? 'text' : 'password'} value={password}
-                                    onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required
-                                    className="w-full bg-zinc-900/80 border border-zinc-800 text-white placeholder-zinc-600 text-[14px] py-3 pl-10 pr-12 rounded-xl focus:outline-none focus:border-[#67BAF4]/50 focus:ring-1 focus:ring-[#67BAF4]/20 transition-all" />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer">
-                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                </button>
-                            </div>
-                        </div>
-                        <button id="login-submit" type="submit" disabled={loading}
-                            className="w-full bg-gradient-to-b from-[#255580] to-[#1E466B] hover:from-[#2c6596] hover:to-[#255580] text-white font-bold text-[14px] py-3 px-4 rounded-xl transition-all duration-200 shadow-lg shadow-[#1E466B]/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
-                            {loading ? <span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Memproses...</span> : 'Masuk'}
-                        </button>
-                    </form>
-
-                    <p className="text-center text-zinc-500 text-[13px] mt-6">
+                    <p className="text-center text-zinc-500 text-[13px] mt-5 sm:mt-7">
                         Belum punya akun?{' '}
                         <Link href="/auth/register" className="text-[#67BAF4] hover:text-[#89cff0] font-semibold transition-colors">Daftar</Link>
                     </p>
@@ -144,7 +207,7 @@ export default function LoginPage() {
     return (
         <Suspense fallback={
             <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
-                <div className="text-white">Loading...</div>
+                <div className="text-zinc-400">Loading...</div>
             </div>
         }>
             <LoginContent />

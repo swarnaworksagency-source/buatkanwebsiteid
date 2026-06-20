@@ -2,13 +2,15 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
+import { websiteIdSchema } from '@/lib/validations';
 
 export async function POST(request: Request) {
   try {
-    const { websiteId } = await request.json();
-    if (!websiteId) {
-      return NextResponse.json({ error: 'websiteId is required' }, { status: 400 });
+    const parsed = websiteIdSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'websiteId tidak valid.' }, { status: 400 });
     }
+    const { websiteId } = parsed.data;
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -47,8 +49,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Website not found or not owned by user' }, { status: 404 });
     }
 
-    // 1. Hapus payment terkait (untuk mencegah error 409 Conflict Foreign Key)
-    await adminSupabase.from('payments').delete().eq('website_id', websiteId);
+    // 1. Soft-delete payment terkait: data transaksi DISIMPAN untuk audit/sengketa,
+    //    tapi FK dilepas (website_id = null) supaya hard-delete website di bawah
+    //    tidak kena error 409 Conflict Foreign Key.
+    await adminSupabase
+      .from('payments')
+      .update({ deleted_at: new Date().toISOString(), website_id: null })
+      .eq('website_id', websiteId);
 
     // 2. Hapus website
     const { error: deleteError } = await adminSupabase

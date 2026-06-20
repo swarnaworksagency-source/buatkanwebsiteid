@@ -1,7 +1,11 @@
 export async function convertToWebP(
-  file: File, 
+  file: File,
   quality: number = 0.85
 ): Promise<File> {
+  // SVG sudah vektor — jangan diraster ke WebP, pakai apa adanya.
+  if (file.type === 'image/svg+xml' || /\.svg$/i.test(file.name)) {
+    return Promise.resolve(file);
+  }
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
@@ -64,8 +68,9 @@ export async function convertAllToWebP(
 ): Promise<File[]> {
   return Promise.all(
     files.map(file => {
-      // Skip jika sudah WebP atau bukan gambar
+      // Skip jika sudah WebP, SVG (vektor), atau bukan gambar
       if (file.type === 'image/webp') return file
+      if (file.type === 'image/svg+xml' || /\.svg$/i.test(file.name)) return file
       if (!file.type.startsWith('image/')) return file
       return convertToWebP(file, quality)
     })

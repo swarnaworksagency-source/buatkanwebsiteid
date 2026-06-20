@@ -2,13 +2,15 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
+import { paymentIdSchema } from '@/lib/validations';
 
 export async function POST(request: Request) {
   try {
-    const { paymentId } = await request.json();
-    if (!paymentId) {
-      return NextResponse.json({ error: 'paymentId is required' }, { status: 400 });
+    const parsed = paymentIdSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'paymentId tidak valid.' }, { status: 400 });
     }
+    const { paymentId } = parsed.data;
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -41,6 +43,7 @@ export async function POST(request: Request) {
       .select('id')
       .eq('id', paymentId)
       .eq('user_id', user.id)
+      .is('deleted_at', null)
       .single();
 
     if (verifyError || !payment) {
