@@ -13,6 +13,15 @@ export interface KeahlianItem {
   deskripsi: string;
 }
 
+// Riwayat pengalaman (dipakai template personal-002/003: tab Pekerjaan/Kompetisi/Organisasi).
+export type PengalamanKategori = "pekerjaan" | "kompetisi" | "organisasi";
+export interface PengalamanItem {
+  kategori: PengalamanKategori;
+  tahun: string;
+  judul: string;
+  deskripsi: string;
+}
+
 export interface PaketHarga {
   namaPaket: string;
   harga: string;
@@ -44,6 +53,7 @@ export interface FormData {
   gayaHidup: string[];
   paketHarga: PaketHarga[];
   proyekPortofolio: ProyekPortofolio[];
+  pengalaman: PengalamanItem[];
   // Step 3 — Visual & Aset
   tema: "dark" | "light" | "";
   primaryColor: string;
@@ -147,6 +157,7 @@ export interface TemplateData {
   
   paketHarga: PaketHarga[];
   keahlian?: KeahlianItem[];
+  pengalaman?: PengalamanItem[];
   logo: string;
   fotoBisnis: string[];
   portofolio: string[];

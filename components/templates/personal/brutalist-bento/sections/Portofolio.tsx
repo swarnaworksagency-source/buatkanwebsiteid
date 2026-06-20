@@ -14,7 +14,7 @@ export default function Portofolio({ portofolio, layanan, waLink }: SectionProps
     }));
 
     return (
-        <section id="proyek" style={{
+        <section id="proyek" className="bb-port-sec" style={{
             backgroundColor: STUDIO.bg, backgroundImage: BG_LAYERS, backgroundSize: BG_SIZES,
             padding: "96px 36px", minHeight: "100vh", display: "flex", alignItems: "center",
         }}>
@@ -79,6 +79,7 @@ export default function Portofolio({ portofolio, layanan, waLink }: SectionProps
             </div>
             <style>{`
                 @media (max-width: 900px) { .bb-port { grid-template-columns: repeat(2, 1fr) !important; } }
+                @media (max-width: 768px) { .bb-port-sec { padding: 56px 18px !important; min-height: auto !important; } }
                 @media (max-width: 560px) { .bb-port { grid-template-columns: 1fr !important; } }
             `}</style>
         </section>

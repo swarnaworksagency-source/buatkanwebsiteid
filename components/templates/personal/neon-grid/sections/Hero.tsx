@@ -93,7 +93,7 @@ export default function Hero({
                 )}
 
                 {/* ── 1.2 Overlapping Hero Showcase ── */}
-                <div style={{
+                <div className="ng-hero-box" style={{
                     position: "relative", borderRadius: NEON.huge, overflow: "hidden",
                     minHeight: 600, background: NEON.card,
                     border: `1px solid ${NEON.hairline}`,
@@ -175,10 +175,12 @@ export default function Hero({
                         </div>
 
                         {/* Bottom-right — dual CTA (replaces app-store badges) */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>
+                        <div className="ng-hero-cta" style={{ display: "flex", flexDirection: "column", gap: 12, flexShrink: 0 }}>
                             <a href={waLink} target="_blank" rel="noopener noreferrer" style={{
                                 display: "inline-flex", alignItems: "center", justifyContent: "space-between", gap: 14,
-                                background: NEON.lime, color: NEON.onLime,
+                                // Glossy seperti tombol "Lihat Proyek", tapi warna lime.
+                                background: "rgba(163,230,53,0.14)", color: NEON.lime,
+                                border: "1px solid rgba(163,230,53,0.5)", backdropFilter: "blur(6px)",
                                 padding: "14px 18px", borderRadius: NEON.md, minWidth: 220,
                                 fontSize: 14, fontWeight: 700, textDecoration: "none",
                             }}>
@@ -207,6 +209,14 @@ export default function Hero({
                     .ng-nav-burger { display: flex !important; }
                     .ng-hero-subtext { max-width: 100% !important; }
                     .ng-hero-bottom { padding: 28px 24px 28px !important; }
+                }
+                @media (max-width: 768px) {
+                    /* Konten bawah dilepas dari absolute → mengalir, kotak ikut tinggi konten
+                       (sebelumnya nempel di minHeight:600 + overflow:hidden = kepotong). */
+                    .ng-hero-box { min-height: auto !important; }
+                    .ng-hero-bottom { position: static !important; flex-direction: column !important; align-items: stretch !important; padding: 24px 18px 28px !important; }
+                    .ng-hero-cta { width: 100% !important; }
+                    .ng-hero-cta a { min-width: 0 !important; }
                 }
             `}</style>
         </section>

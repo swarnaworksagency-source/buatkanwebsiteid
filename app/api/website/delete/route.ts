@@ -64,11 +64,13 @@ export async function POST(request: Request) {
       .eq('id', websiteId);
 
     if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+      console.error('Website delete error:', deleteError);
+      return NextResponse.json({ error: 'Gagal menghapus website.' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Website delete error:', error);
+    return NextResponse.json({ error: 'Terjadi kesalahan server.' }, { status: 500 });
   }
 }

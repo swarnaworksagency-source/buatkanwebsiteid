@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isAdmin } from '@/lib/auth'
 
 // Next.js 16: konvensi `middleware` di-deprecate, diganti `proxy` (runtime nodejs).
 // Fungsi WAJIB bernama `proxy`. Logika tetap sama: subdomain rewrite + session refresh + admin guard.
@@ -73,7 +74,7 @@ export async function proxy(request: NextRequest) {
         if (!user) {
             return NextResponse.redirect(new URL('/auth/login', request.url))
         }
-        if (user.app_metadata?.role !== 'admin') {
+        if (!isAdmin(user)) {
             return NextResponse.redirect(new URL('/dashboard', request.url))
         }
     }

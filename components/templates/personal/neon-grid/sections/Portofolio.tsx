@@ -10,7 +10,7 @@ export default function Portofolio({ portofolio, layanan, waLink }: SectionProps
     }));
 
     return (
-        <section id="proyek" style={{ backgroundColor: NEON.bg, backgroundImage: "radial-gradient(ellipse 55% 50% at 50% 80%, rgba(163,230,53,0.04) 0%, transparent 65%)", padding: "60px 36px", minHeight: "100vh", display: "flex", alignItems: "center" }}>
+        <section id="proyek" className="ng-port-sec" style={{ backgroundColor: NEON.bg, backgroundImage: "radial-gradient(ellipse 55% 50% at 50% 80%, rgba(163,230,53,0.04) 0%, transparent 65%)", padding: "60px 36px", minHeight: "100vh", display: "flex", alignItems: "center" }}>
             <div style={{ maxWidth: 1280, margin: "0 auto", width: "100%" }}>
                 <div style={{ marginBottom: 40 }}>
                     <h2 style={{ fontSize: "clamp(28px, 3.6vw, 44px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.05, color: "#fff", margin: 0 }}>
@@ -50,6 +50,7 @@ export default function Portofolio({ portofolio, layanan, waLink }: SectionProps
             </div>
             <style>{`
                 @media (max-width: 900px) { .ng-port { grid-template-columns: repeat(2, 1fr) !important; } }
+                @media (max-width: 768px) { .ng-port-sec { min-height: auto !important; align-items: flex-start !important; padding: 48px 18px !important; } }
                 @media (max-width: 560px) { .ng-port { grid-template-columns: 1fr !important; } }
             `}</style>
         </section>

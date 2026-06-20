@@ -1,15 +1,27 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { websiteIdSchema } from '@/lib/validations';
+import { z } from 'zod';
+import { adminClient } from '@/lib/ip';
+import { validateSubdomain } from '@/lib/subdomain';
+
+const createSchema = z.object({
+  websiteId: z.uuid(),
+  subdomain: z.string().min(1).max(40),
+});
 
 export async function POST(request: Request) {
   try {
-    const parsed = websiteIdSchema.safeParse(await request.json().catch(() => null));
+    const parsed = createSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ error: 'websiteId tidak valid.' }, { status: 400 });
+      return NextResponse.json({ error: 'Data tidak valid.' }, { status: 400 });
     }
     const { websiteId } = parsed.data;
+
+    // Validasi subdomain authoritative (jangan percaya client).
+    const sub = validateSubdomain(parsed.data.subdomain);
+    if (!sub.ok) return NextResponse.json({ error: sub.message }, { status: 400 });
+    const subdomain = sub.value;
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -48,7 +60,26 @@ export async function POST(request: Request) {
       .single();
 
     if (websiteError || !website) {
-      return NextResponse.json({ error: `Website tidak ditemukan: ${websiteError?.message || 'Not Found'}` }, { status: 404 });
+      return NextResponse.json({ error: 'Website tidak ditemukan.' }, { status: 404 });
+    }
+
+    // Simpan subdomain server-side (cek unik dulu). Pakai service role supaya RLS bisa
+    // dikunci melarang client menulis kolom subdomain langsung (anti-bypass).
+    const admin = adminClient();
+    const { data: taken } = await admin
+      .from('websites')
+      .select('id')
+      .eq('subdomain', subdomain)
+      .neq('id', websiteId)
+      .limit(1)
+      .maybeSingle();
+    if (taken) {
+      return NextResponse.json({ error: 'Subdomain ini sudah digunakan.' }, { status: 409 });
+    }
+    const { error: subErr } = await admin.from('websites').update({ subdomain }).eq('id', websiteId);
+    if (subErr) {
+      console.error('Save subdomain error:', subErr);
+      return NextResponse.json({ error: 'Gagal menyimpan subdomain.' }, { status: 500 });
     }
 
     // Cek apakah user termasuk early adopter
@@ -58,7 +89,8 @@ export async function POST(request: Request) {
       .eq('status', 'active');
 
     if (countError) {
-      return NextResponse.json({ error: `Gagal cek kuota early adopter: ${countError.message}` }, { status: 500 });
+      console.error('Early adopter count error:', countError);
+      return NextResponse.json({ error: 'Gagal memproses pembayaran. Coba lagi.' }, { status: 500 });
     }
 
     const activeCount = count || 0;
@@ -117,7 +149,7 @@ export async function POST(request: Request) {
 
     if (result.statusCode !== '00') {
       console.error('Duitku API Error:', result);
-      return NextResponse.json({ error: `Duitku error: ${result.statusMessage || JSON.stringify(result)}` }, { status: 400 });
+      return NextResponse.json({ error: 'Gagal membuat invoice pembayaran. Coba lagi.' }, { status: 400 });
     }
 
     // Simpan ke tabel payments
@@ -135,7 +167,7 @@ export async function POST(request: Request) {
 
     if (insertError) {
       console.error('Payment insert error:', insertError);
-      return NextResponse.json({ error: `Gagal menyimpan ke tabel payments: ${insertError.message}` }, { status: 500 });
+      return NextResponse.json({ error: 'Gagal menyimpan data pembayaran. Coba lagi.' }, { status: 500 });
     }
 
     // Kembalikan paymentUrl dari Duitku
@@ -147,7 +179,7 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error('Payment create error:', error);
-    return NextResponse.json({ error: `Server error: ${error.message || 'Unknown'}` }, { status: 500 });
+    return NextResponse.json({ error: 'Terjadi kesalahan server. Coba lagi.' }, { status: 500 });
   }
 }
 

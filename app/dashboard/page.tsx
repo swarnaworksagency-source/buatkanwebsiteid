@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { isAdmin } from '@/lib/auth'
 import DashboardClient from './DashboardClient'
 
 export const metadata = {
@@ -74,6 +75,7 @@ export default async function DashboardPage() {
             generatedToday={generatedToday}
             totalWebsites={totalWebsites}
             activeWebsites={activeWebsites}
+            isAdmin={isAdmin(user)}
         />
     )
 }

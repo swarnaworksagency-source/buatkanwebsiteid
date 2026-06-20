@@ -9,8 +9,15 @@ import { createServerSupabaseClient } from '@/lib/supabase-server';
 // JANGAN getSession() (JWT bisa basi setelah role diubah).
 export const ADMIN_ROLE = 'admin';
 
+// Allowlist email admin. Dipakai selain role app_metadata supaya admin utama
+// bisa akses tanpa harus set role manual di Supabase. Bandingkan lowercase.
+export const ADMIN_EMAILS = ['swarnaworksagency@gmail.com'];
+
 export function isAdmin(user: User | null | undefined): boolean {
-  return user?.app_metadata?.role === ADMIN_ROLE;
+  if (!user) return false;
+  if (user.app_metadata?.role === ADMIN_ROLE) return true;
+  const email = user.email?.toLowerCase();
+  return !!email && ADMIN_EMAILS.includes(email);
 }
 
 /**

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { TemplateData, FormData, PaketHarga, ProyekPortofolio, KeahlianItem } from "@/types";
+import type { TemplateData, FormData, PaketHarga, ProyekPortofolio, KeahlianItem, PengalamanItem } from "@/types";
 import { getTemplateComponent, getTemplateKategori } from "@/lib/templateRegistry";
 import { createClient } from "@/lib/supabase";
 import { convertToWebP } from "@/lib/imageUtils";
@@ -10,6 +10,7 @@ import { SearchableCombobox } from "@/components/ui/SearchableCombobox";
 import { safeStorage } from '@/lib/storage';
 import { AutocompleteInput } from "@/components/ui/AutocompleteInput";
 import { MultiSelectDropdown } from "@/components/ui/MultiSelectDropdown";
+import { IframePreview } from "@/components/ui/IframePreview";
 import {
   Monitor, Smartphone, Loader2, Globe, Pencil,
   ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Eye, PenLine,
@@ -46,39 +47,54 @@ const NUANSA_OPTIONS = [
 ];
 const PROFESI_OPTIONS = [
   // Kreatif & Desain
-  "UI/UX Designer", "Desainer Grafis", "Illustrator", "Motion Designer", "Animator", "3D Artist",
-  "Product Designer", "Brand Designer", "Logo Designer", "Interior Designer", "Arsitek", "Desainer Produk",
+  "UI/UX Designer", "UI Designer", "UX Designer", "UX Researcher", "Desainer Grafis", "Illustrator", "Motion Designer",
+  "Animator", "3D Artist", "Product Designer", "Brand Designer", "Logo Designer", "Interior Designer", "Arsitek",
+  "Desainer Produk", "Graphic Artist", "Visual Designer", "Concept Artist", "Game Artist", "Comic Artist",
   // Web & Software
-  "Web Developer", "Frontend Developer", "Backend Developer", "Full-Stack Developer", "Mobile Developer",
-  "Software Engineer", "Game Developer", "WordPress Developer", "No-Code Developer", "DevOps Engineer",
-  "Data Scientist", "Data Analyst", "Machine Learning Engineer", "QA Engineer", "System Administrator",
+  "Programmer", "Software Developer", "Web Developer", "Frontend Developer", "Backend Developer", "Full-Stack Developer",
+  "Mobile Developer", "Android Developer", "iOS Developer", "Software Engineer", "Game Developer", "WordPress Developer",
+  "No-Code Developer", "DevOps Engineer", "Cloud Engineer", "Site Reliability Engineer", "Security Engineer",
+  "Cybersecurity Specialist", "Blockchain Developer", "AI Engineer", "Machine Learning Engineer", "Data Scientist",
+  "Data Analyst", "Data Engineer", "Database Administrator", "QA Engineer", "Test Engineer", "System Administrator",
+  "Network Engineer", "IT Support", "Technical Writer", "Solution Architect", "Embedded Engineer", "Robotics Engineer",
   // Media & Konten
-  "Fotografer", "Videografer", "Content Creator", "Influencer", "YouTuber", "Podcaster", "Editor Video",
-  "Penulis", "Copywriter", "Content Writer", "Blogger", "Jurnalis", "Translator", "Voice Over Talent",
+  "Fotografer", "Videografer", "Content Creator", "Influencer", "YouTuber", "Podcaster", "Streamer", "Editor Video",
+  "Penulis", "Copywriter", "Content Writer", "Ghostwriter", "Scriptwriter", "Blogger", "Jurnalis", "Reporter",
+  "Translator", "Interpreter", "Voice Over Talent", "Sound Engineer", "Photographer Pre-Wedding", "Drone Pilot",
   // Marketing & Bisnis
-  "Digital Marketer", "Social Media Specialist", "SEO Specialist", "Ads Specialist", "Marketing Consultant",
-  "Business Consultant", "Project Manager", "Product Manager", "Brand Strategist", "Public Relations",
-  "Sales Executive", "Account Manager", "Entrepreneur", "Founder", "Virtual Assistant",
+  "Digital Marketer", "Social Media Specialist", "Social Media Manager", "SEO Specialist", "SEM Specialist",
+  "Ads Specialist", "Performance Marketer", "Marketing Consultant", "Business Consultant", "Business Analyst",
+  "Project Manager", "Product Manager", "Program Manager", "Scrum Master", "Brand Strategist", "Growth Hacker",
+  "Public Relations", "Sales Executive", "Account Manager", "Account Executive", "Entrepreneur", "Founder",
+  "Co-Founder", "CEO", "Startup Founder", "Virtual Assistant", "Customer Service", "Recruiter", "HR Specialist",
   // Edukasi & Pengembangan Diri
-  "Guru", "Dosen", "Tutor Privat", "Trainer", "Mentor", "Coach", "Life Coach", "Public Speaker",
+  "Guru", "Dosen", "Tutor Privat", "Trainer", "Mentor", "Coach", "Life Coach", "Business Coach", "Public Speaker",
+  "Konsultan Pendidikan", "Instruktur", "Peneliti",
   // Kesehatan & Kebugaran
-  "Dokter", "Dokter Gigi", "Psikolog", "Perawat", "Bidan", "Ahli Gizi", "Personal Trainer", "Yoga Instructor",
-  "Terapis", "Fisioterapis", "Apoteker",
+  "Dokter", "Dokter Gigi", "Dokter Hewan", "Psikolog", "Psikiater", "Perawat", "Bidan", "Ahli Gizi", "Nutrisionis",
+  "Personal Trainer", "Yoga Instructor", "Pilates Instructor", "Terapis", "Fisioterapis", "Apoteker", "Radiografer",
   // Keuangan & Hukum
-  "Akuntan", "Konsultan Pajak", "Financial Planner", "Pengacara", "Notaris", "Auditor",
+  "Akuntan", "Konsultan Pajak", "Financial Planner", "Financial Advisor", "Investor", "Trader", "Aktuaris",
+  "Pengacara", "Notaris", "Auditor", "Konsultan Hukum",
   // Beauty, Fashion & Event
-  "Make Up Artist", "Hair Stylist", "Fashion Designer", "Penjahit", "Stylist", "Wedding Organizer",
-  "Event Organizer", "MC / Pembawa Acara", "Dekorator",
+  "Make Up Artist", "Hair Stylist", "Beautician", "Nail Artist", "Fashion Designer", "Penjahit", "Stylist",
+  "Personal Stylist", "Wedding Organizer", "Event Organizer", "MC / Pembawa Acara", "Dekorator", "Florist",
   // Seni & Hiburan
-  "Musisi", "Penyanyi", "Produser Musik", "DJ", "Aktor", "Penari", "Seniman", "Pelukis",
+  "Musisi", "Penyanyi", "Produser Musik", "Music Arranger", "DJ", "Aktor", "Penari", "Koreografer", "Seniman",
+  "Pelukis", "Komikus", "Kreator Game",
+  // Teknik & Industri
+  "Insinyur", "Insinyur Sipil", "Insinyur Mesin", "Insinyur Elektro", "Drafter", "Surveyor", "Quantity Surveyor",
+  "Kontraktor", "Mandor", "Teknisi",
   // Lain-lain
-  "Chef", "Barista", "Konsultan", "Researcher", "Surveyor", "Agen Properti", "Agen Asuransi",
+  "Chef", "Pastry Chef", "Barista", "Bartender", "Konsultan", "Researcher", "Agen Properti", "Agen Asuransi",
+  "Pilot", "Pramugari", "Tour Guide", "Penerjemah", "Freelancer", "Konten Kreator",
 ];
 const INITIAL_FORM: FormData = {
   namaBisnis: "", namaPanggilan: "", tagline: "", kategoriJasa: "", lokasi: "", nomorWhatsApp: "",
   telepon: "", email: "", instagram: "", x_twitter: "", tiktok: "", linkedin: "",
   keunggulan: "", layananSpesifik: [], keahlianList: [], usia: [], statusKeluarga: [], pekerjaan: [], gayaHidup: [], paketHarga: [],
   proyekPortofolio: [],
+  pengalaman: [],
   tema: "", primaryColor: "#4f46e5", logo: "", fotoBisnis: [], portofolio: [],
 };
 const inputClass = "w-full bg-zinc-900/80 border border-zinc-800 rounded-xl px-4 py-3 text-[13px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none focus:ring-1 focus:ring-zinc-600 focus:border-zinc-600 transition-all duration-200";
@@ -220,7 +236,8 @@ function BuatContent() {
     const selectedKategori = typeof window !== 'undefined' ? safeStorage.get("selected_kategori") : null;
     const tplId = typeof window !== 'undefined' ? (safeStorage.get("selected_template") || 'jasa-001') : 'jasa-001';
     setSelectedTemplateId(tplId);
-    setFormMode(tplId === 'personal-001' ? 'portfolio' : 'jasa');
+    // Semua template kategori 'personal' (personal-001/002/003) pakai formulir portofolio.
+    setFormMode(getTemplateKategori(tplId) === 'personal' ? 'portfolio' : 'jasa');
 
     if (selectedKategori === "fnb") {
       setKategoriSuggestions([
@@ -682,6 +699,13 @@ function BuatContent() {
     updateField("keahlianList", formData.keahlianList.map((k, i) => i === index ? { ...k, [key]: value } : k));
   };
 
+  /* ── Pengalaman Handlers (mode portfolio, template personal-002/003) ── */
+  const addPengalaman = () => updateField("pengalaman", [...formData.pengalaman, { kategori: "pekerjaan", tahun: "", judul: "", deskripsi: "" } as PengalamanItem]);
+  const removePengalaman = (index: number) => updateField("pengalaman", formData.pengalaman.filter((_, i) => i !== index));
+  const updatePengalaman = (index: number, key: keyof PengalamanItem, value: string) => {
+    updateField("pengalaman", formData.pengalaman.map((p, i) => i === index ? ({ ...p, [key]: value } as PengalamanItem) : p));
+  };
+
   /* ── Proyek Portofolio Handlers ── */
   const addProyek = () => {
     updateField("proyekPortofolio", [...formData.proyekPortofolio, EMPTY_PROYEK()]);
@@ -903,6 +927,7 @@ function BuatContent() {
 
         paketHarga: formData.paketHarga,
         keahlian: formData.keahlianList.filter((k) => k.nama.trim()),
+        pengalaman: formData.pengalaman.filter((p) => p.judul.trim()),
         logo: logoUrl,
         portofolio: portofolioUrls,
         fotoBisnis: fotoBisnisUrls,
@@ -980,6 +1005,8 @@ function BuatContent() {
       sosmed: { instagram: formData.instagram, tiktok: formData.tiktok, twitter: formData.x_twitter },
       warna: { primary: formData.primaryColor, tema: (formData.tema || "light") as "dark" | "light" },
       paketHarga: formData.paketHarga,
+      keahlian: formData.keahlianList.filter((k) => k.nama.trim()),
+      pengalaman: formData.pengalaman.filter((p) => p.judul.trim()),
       logo: formData.logo,
       portofolio: formData.portofolio,
     };
@@ -1085,6 +1112,7 @@ function BuatContent() {
         warna: { primary: formData.primaryColor, tema: (formData.tema || "light") as "dark" | "light" },
         paketHarga: formData.paketHarga,
         keahlian: formData.keahlianList.filter((k) => k.nama.trim()),
+        pengalaman: formData.pengalaman.filter((p) => p.judul.trim()),
         logo: logoUrl,
         portofolio: portofolioUrls,
         fotoBisnis: fotoBisnisUrls,
@@ -1550,6 +1578,41 @@ function BuatContent() {
                   ))}
                 </div>
 
+                {/* Pengalaman — hanya template yang punya section ini (personal-002/003) */}
+                {(selectedTemplateId === "personal-002" || selectedTemplateId === "personal-003") && (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Award className="w-3 h-3" /> Pengalaman</label>
+                      <button type="button" onClick={addPengalaman} className="flex items-center gap-1 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer">
+                        <Plus className="w-3 h-3" /> Tambah Pengalaman
+                      </button>
+                    </div>
+                    <p className="text-zinc-600 text-[11px] -mt-1">Riwayat Pekerjaan, Kompetisi, atau Organisasi. Tampil sebagai tab di template.</p>
+                    {formData.pengalaman.length === 0 && (
+                      <div className="text-center py-6 border border-dashed border-zinc-800 rounded-xl text-zinc-600 text-[12px]">
+                        Belum ada pengalaman. Klik Tambah Pengalaman.
+                      </div>
+                    )}
+                    {formData.pengalaman.map((p, idx) => (
+                      <div key={idx} className="border border-zinc-800 bg-zinc-900/60 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <select value={p.kategori} onChange={(e) => updatePengalaman(idx, "kategori", e.target.value)} className={`${inputClass} !py-2 !text-[12px] flex-1`}>
+                            <option value="pekerjaan">Pekerjaan / Project</option>
+                            <option value="kompetisi">Kompetisi</option>
+                            <option value="organisasi">Organisasi</option>
+                          </select>
+                          <input type="text" maxLength={24} value={p.tahun} onChange={(e) => updatePengalaman(idx, "tahun", e.target.value)} placeholder="contoh: 2024" className={`${inputClass} !py-2 !text-[12px] !w-28 flex-shrink-0`} />
+                          <button type="button" onClick={() => removePengalaman(idx)} className="p-1.5 rounded-md hover:bg-red-900/30 text-zinc-600 hover:text-red-400 transition-colors cursor-pointer flex-shrink-0">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <input type="text" maxLength={80} value={p.judul} onChange={(e) => updatePengalaman(idx, "judul", e.target.value)} placeholder="Judul — contoh: Juara 1 Inkubator UNY" className={`${inputClass} !py-2 !text-[12px]`} />
+                        <textarea value={p.deskripsi} onChange={(e) => updatePengalaman(idx, "deskripsi", e.target.value)} placeholder="Deskripsi singkat (1-2 kalimat)" rows={2} className={`${inputClass} !py-2 !text-[12px] resize-none`} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Proyek */}
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
@@ -1943,7 +2006,7 @@ function BuatContent() {
                       <div className="w-3 h-3 rounded-full bg-zinc-800 border border-zinc-700 mr-2" /><div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                     </div>
                   </div>
-                  <div className="h-full w-full overflow-y-auto overflow-x-hidden">{templateData ? <TemplateComponent {...templateData} forceMobile={true} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} /> : <EmptyState />}</div>
+                  <div className="h-full w-full">{templateData ? <IframePreview dark={templateData?.warna?.tema === "dark"}><TemplateComponent {...templateData} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} /></IframePreview> : <EmptyState />}</div>
                   <div className={`flex-shrink-0 flex justify-center py-2 ${templateData?.warna?.tema === "dark" ? "bg-zinc-950" : "bg-white"}`}><div className={`w-32 h-1 rounded-full ${templateData?.warna?.tema === "dark" ? "bg-zinc-700" : "bg-zinc-300"}`} /></div>
                   {isBuilding && <BuildingOverlay onCancel={() => { abortControllerRef.current?.abort(); setIsBuilding(false); setIsLoading(false); }} />}
                 </div>
@@ -1951,8 +2014,8 @@ function BuatContent() {
             </div>
             {/* ── Mobile-only: direct inline preview (no device frame) ── */}
             <div className="md:hidden w-full h-full flex flex-col rounded-xl border border-zinc-800 overflow-hidden relative">
-              <div className={`flex-1 overflow-y-auto overflow-x-hidden ${templateData?.warna?.tema === "dark" ? "bg-zinc-950" : "bg-white"}`}>
-                {templateData ? <TemplateComponent {...templateData} forceMobile={true} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} /> : <EmptyState />}
+              <div className={`flex-1 ${templateData?.warna?.tema === "dark" ? "bg-zinc-950" : "bg-white"}`}>
+                {templateData ? <IframePreview dark={templateData?.warna?.tema === "dark"}><TemplateComponent {...templateData} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} /></IframePreview> : <EmptyState />}
               </div>
               {isBuilding && <BuildingOverlay onCancel={() => { abortControllerRef.current?.abort(); setIsBuilding(false); setIsLoading(false); }} />}
             </div>

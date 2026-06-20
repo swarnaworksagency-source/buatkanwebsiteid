@@ -30,12 +30,17 @@ const PLACEHOLDER: Record<string, Array<{ tahun: string; judul: string; deskrips
     ],
 };
 
-export default function Pengalaman({ }: SectionProps) {
+export default function Pengalaman({ pengalaman }: SectionProps) {
     const [activeTab, setActiveTab] = useState(0);
-    const items = PLACEHOLDER[TABS[activeTab].key];
+    // Pakai data user (dari form). Kalau kosong → placeholder biar preview tak hampa.
+    const userItems = pengalaman || [];
+    const hasUser = userItems.length > 0;
+    const items = hasUser
+        ? userItems.filter((p) => p.kategori === TABS[activeTab].key)
+        : PLACEHOLDER[TABS[activeTab].key];
 
     return (
-        <section id="pengalaman" style={{
+        <section id="pengalaman" className="bb-exp-sec" style={{
             backgroundColor: STUDIO.bg, backgroundImage: BG_LAYERS, backgroundSize: BG_SIZES,
             padding: "40px 36px", height: "100vh", boxSizing: "border-box",
             display: "flex", flexDirection: "column", justifyContent: "center", overflow: "hidden",
@@ -76,8 +81,11 @@ export default function Pengalaman({ }: SectionProps) {
                     borderRadius: STUDIO.xl, padding: "36px 32px",
                     display: "flex", flexDirection: "column", gap: 0,
                 }}>
+                    {items.length === 0 && (
+                        <p style={{ fontSize: 14, color: STUDIO.muted, margin: 0, padding: "8px 0" }}>Belum ada di kategori ini.</p>
+                    )}
                     {items.map((item, i) => (
-                        <div key={i} style={{
+                        <div key={i} className="bb-exp-row" style={{
                             display: "grid", gridTemplateColumns: "160px 1fr", gap: 24,
                             padding: "20px 0",
                             borderBottom: i < items.length - 1 ? `1px solid ${STUDIO.hairlineSoft}` : "none",
@@ -98,6 +106,13 @@ export default function Pengalaman({ }: SectionProps) {
                     ))}
                 </div>
             </div>
+            <style>{`
+                @media (max-width: 768px) {
+                    /* Lepas tinggi tetap 100vh + stack kolom tahun/judul biar tidak sempit & terpotong. */
+                    .bb-exp-sec { height: auto !important; overflow: visible !important; justify-content: flex-start !important; padding: 40px 18px !important; }
+                    .bb-exp-row { grid-template-columns: 1fr !important; gap: 6px !important; }
+                }
+            `}</style>
         </section>
     );
 }

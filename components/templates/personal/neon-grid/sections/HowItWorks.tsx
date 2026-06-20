@@ -28,7 +28,7 @@ export default function HowItWorks({ caraKerja, caraKerjaTitle, layanan, about, 
         || `${name.split(" ")[0]} bekerja lewat proses yang jelas dan terukur — dari ide awal hingga hasil akhir.`;
 
     return (
-        <section id="proses" style={{
+        <section id="proses" className="ng-hiw-sec" style={{
             backgroundColor: NEON.bg,
             backgroundImage: BG_GLOW,
             padding: "96px 36px 60px", minHeight: "100vh", display: "flex", alignItems: "center",
@@ -69,6 +69,9 @@ export default function HowItWorks({ caraKerja, caraKerjaTitle, layanan, about, 
             <style>{`
                 @media (max-width: 900px) {
                     .ng-hiw-grid { grid-template-columns: 1fr 1fr !important; }
+                }
+                @media (max-width: 768px) {
+                    .ng-hiw-sec { min-height: auto !important; align-items: flex-start !important; padding: 56px 18px !important; }
                 }
                 @media (max-width: 560px) {
                     .ng-hiw-grid { grid-template-columns: 1fr !important; }

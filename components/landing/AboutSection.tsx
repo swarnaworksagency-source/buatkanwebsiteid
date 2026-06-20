@@ -210,7 +210,9 @@ export default function AboutSection() {
                   src={logo.src}
                   alt={logo.alt}
                   loading="lazy"
-                  className="h-full w-full object-contain hover:scale-110 transition-transform duration-300"
+                  className={`h-full w-full object-contain transition-transform duration-300 ${
+                    logo.alt === "DIU UNY" ? "scale-[2.5] hover:scale-[2.7]" : "hover:scale-110"
+                  }`}
                 />
               </div>
             ))}

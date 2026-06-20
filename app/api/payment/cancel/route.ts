@@ -56,11 +56,13 @@ export async function POST(request: Request) {
       .eq('id', paymentId);
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      console.error('Payment cancel error:', updateError);
+      return NextResponse.json({ error: 'Gagal membatalkan pembayaran.' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Payment cancel error:', error);
+    return NextResponse.json({ error: 'Terjadi kesalahan server.' }, { status: 500 });
   }
 }

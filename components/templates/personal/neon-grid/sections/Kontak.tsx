@@ -16,7 +16,7 @@ export default function Kontak({
         <>
             {/* Final CTA card */}
             <section id="kontak" style={{ backgroundColor: NEON.bg, backgroundImage: "radial-gradient(ellipse 60% 50% at 50% 100%, rgba(163,230,53,0.05) 0%, transparent 65%)", padding: "60px 16px 40px" }}>
-                <div style={{
+                <div className="ng-cta-wrap" style={{
                     position: "relative", overflow: "hidden", maxWidth: 1280, margin: "0 auto",
                     borderRadius: NEON.huge, background: NEON.lime, color: NEON.onLime,
                     padding: "72px 40px", textAlign: "center",
@@ -94,6 +94,12 @@ export default function Kontak({
                     </p>
                 </div>
             </footer>
+            <style>{`
+                @media (max-width: 768px) {
+                    .ng-cta-wrap { padding: 48px 22px !important; }
+                    .ng-foot { padding-top: 28px !important; gap: 24px !important; }
+                }
+            `}</style>
         </>
     );
 }

@@ -21,7 +21,7 @@ export default function BentoServices({
     const activePerson = people[selected % people.length];
 
     return (
-        <section id="layanan" style={{
+        <section id="layanan" className="bb-bento-sec" style={{
             backgroundColor: STUDIO.bg, backgroundImage: BG_LAYERS, backgroundSize: BG_SIZES,
             padding: "40px 36px", height: "100vh", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "center", overflow: "hidden",
         }}>
@@ -133,6 +133,10 @@ export default function BentoServices({
             <style>{`
                 @media (max-width: 900px) {
                     .bb-bento { grid-template-columns: 1fr !important; }
+                }
+                @media (max-width: 768px) {
+                    /* Lepas tinggi tetap 100vh → dua kartu bertumpuk tidak terpotong. */
+                    .bb-bento-sec { height: auto !important; overflow: visible !important; justify-content: flex-start !important; padding: 40px 18px !important; }
                 }
             `}</style>
         </section>

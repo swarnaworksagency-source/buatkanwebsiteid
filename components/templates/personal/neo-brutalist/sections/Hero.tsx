@@ -105,18 +105,20 @@ export default function Hero({
                         {open ? <X size={20} /> : <Menu size={20} />}
                     </button>
                 </div>
-            </nav>
 
-            {open && (
-                <div style={{ background: BRUT.charcoal, borderBottom: BRUT.borderThick, padding: 12, display: "flex", flexDirection: "column", gap: 2, position: "relative", zIndex: 5 }}>
-                    {NAV_LINKS.map(l => (
-                        <a key={l.href} href={l.href} onClick={() => setOpen(false)}
-                            style={{ fontSize: 15, fontWeight: 700, color: BRUT.white, textDecoration: "none", padding: "12px 14px", textTransform: "uppercase" }}>
-                            {l.label}
-                        </a>
-                    ))}
-                </div>
-            )}
+                {/* Menu mobile: absolute (overlay) supaya membuka menu TIDAK mendorong
+                    canvas/tulisan nama layer ke bawah. Anchored di bawah nav. */}
+                {open && (
+                    <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: BRUT.charcoal, borderBottom: BRUT.borderThick, padding: 12, display: "flex", flexDirection: "column", gap: 2, zIndex: 10 }}>
+                        {NAV_LINKS.map(l => (
+                            <a key={l.href} href={l.href} onClick={() => setOpen(false)}
+                                style={{ fontSize: 15, fontWeight: 700, color: BRUT.white, textDecoration: "none", padding: "12px 14px", textTransform: "uppercase" }}>
+                                {l.label}
+                            </a>
+                        ))}
+                    </div>
+                )}
+            </nav>
 
             {/* ── Canvas: text walls + portrait (abs) + wings ── */}
             <div style={{
@@ -210,6 +212,11 @@ export default function Hero({
                                     {s.deskripsi && <p className="nb-skill-desc" style={{ fontSize: 12, color: BRUT.white, lineHeight: 1.45, margin: 0, fontWeight: 500, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{s.deskripsi}</p>}
                                 </div>
                             ))}
+                            {/* Badge "+N": hanya muncul di MOBILE (lihat @container), ringkas sisa keahlian
+                                supaya chip tidak numpuk & menutupi muka di hero. Desktop: display none. */}
+                            {skillItems.length > 1 && (
+                                <span className="nb-skill-more" style={{ display: "none", width: "fit-content", alignSelf: "center", background: BRUT.white, color: BRUT.black, border: BRUT.border, padding: "4px 10px", fontSize: 12.5, fontWeight: 900, textTransform: "uppercase" }}>+{skillItems.length - 1}</span>
+                            )}
                         </div>
                     </div>
 
@@ -253,11 +260,14 @@ export default function Hero({
                     .nb-hero-stage { flex-direction: column !important; justify-content: flex-start !important; padding: 24px 20px 0 !important; gap: 16px !important; }
                     .nb-wing { max-width: 100% !important; width: 100% !important; padding: 0 !important; }
                     .nb-wing-left { padding-top: 0 !important; }
-                    /* Mobile: tampil nama keahlian saja (chip), sembunyikan deskripsi biar tidak ramai */
-                    .nb-skill-list { flex-direction: row !important; flex-wrap: wrap !important; gap: 8px !important; }
+                    /* Mobile: cukup keahlian PERTAMA + badge "+N", sisanya disembunyikan
+                       biar chip tidak menutupi muka di hero. */
+                    .nb-skill-list { flex-direction: row !important; flex-wrap: wrap !important; gap: 8px !important; align-items: center !important; }
                     .nb-skill-desc { display: none !important; }
-                    /* Deskripsi & tombol lebih kecil di mobile */
-                    .nb-vision { font-size: 14px !important; line-height: 1.5 !important; text-align: left !important; }
+                    .nb-skill-row:not(:first-child) { display: none !important; }
+                    .nb-skill-more { display: inline-block !important; }
+                    /* Deskripsi & tombol lebih kecil di mobile + maksimal 3 baris */
+                    .nb-vision { font-size: 14px !important; line-height: 1.5 !important; text-align: left !important; display: -webkit-box !important; -webkit-line-clamp: 3 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; }
                     .nb-cta { font-size: 12.5px !important; padding: 10px 16px !important; }
                     /* Tulisan layering diturunkan supaya tidak di atas kepala */
                     .nb-wall, .nb-wall-svg { top: 65% !important; }

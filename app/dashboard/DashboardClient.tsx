@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { LogOut, Plus, Clock, Loader2, Edit2, Check, X, Rocket, ExternalLink, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { LogOut, Plus, Clock, Loader2, Edit2, Check, X, Rocket, ExternalLink, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 
 
@@ -38,6 +38,7 @@ interface DashboardClientProps {
     generatedToday: number
     totalWebsites: number
     activeWebsites: number
+    isAdmin?: boolean
 }
 
 const MAX_DAILY = 3
@@ -84,6 +85,7 @@ export default function DashboardClient({
     generatedToday,
     totalWebsites,
     activeWebsites,
+    isAdmin = false,
 }: DashboardClientProps) {
     const [dropdownOpen, setDropdownOpen] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
@@ -285,14 +287,19 @@ export default function DashboardClient({
     const deployWebsite = async (subdomain: string, websiteId: string) => {
         setIsDeploying(true)
         try {
-            const { error } = await supabase
-                .from('websites')
-                .update({ subdomain, status: 'active' })
-                .eq('id', websiteId)
-            if (error) throw error
-            const url = `https://${subdomain}.${MAIN_DOMAIN}`
-            setDeploySuccess({ subdomain, url })
-            setToast(`Website berhasil di-deploy! Akses di ${subdomain}.${MAIN_DOMAIN}`)
+            // Aktivasi authoritative di server (verifikasi paid + validasi subdomain).
+            // Jangan set status 'active' dari client (bisa di-bypass).
+            const res = await fetch('/api/website/deploy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ websiteId, subdomain }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Gagal deploy. Coba lagi.')
+            const finalSub = data.subdomain || subdomain
+            const url = `https://${finalSub}.${MAIN_DOMAIN}`
+            setDeploySuccess({ subdomain: finalSub, url })
+            setToast(`Website berhasil di-deploy! Akses di ${finalSub}.${MAIN_DOMAIN}`)
             setTimeout(() => setToast(''), 5000)
             router.refresh()
         } catch (err: any) {
@@ -306,19 +313,12 @@ export default function DashboardClient({
     const startPayment = async (subdomain: string, websiteId: string) => {
         setPaymentLoading(true)
         try {
-            // PENTING: Simpan subdomain ke database SEBELUM redirect ke Duitku
-            // Karena setelah redirect, user meninggalkan halaman dan state hilang
-            const { error: subdomainError } = await supabase
-                .from('websites')
-                .update({ subdomain })
-                .eq('id', websiteId)
-            
-            if (subdomainError) throw new Error('Gagal menyimpan subdomain: ' + subdomainError.message)
-
+            // Subdomain disimpan & divalidasi server di dalam /api/payment/create
+            // (sebelum invoice dibuat). Tidak menulis subdomain dari client.
             const res = await fetch('/api/payment/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ websiteId })
+                body: JSON.stringify({ websiteId, subdomain })
             })
             const data = await res.json()
             if (!res.ok) throw new Error(data.error || 'Failed to create payment')
@@ -540,6 +540,15 @@ export default function DashboardClient({
                                     <p className="text-white text-[13px] font-semibold truncate">{userName}</p>
                                     <p className="text-zinc-500 text-[12px] truncate">{userEmail}</p>
                                 </div>
+                                {isAdmin && (
+                                    <Link
+                                        href="/admin"
+                                        className="flex items-center gap-2.5 px-4 py-2.5 text-zinc-300 hover:text-emerald-400 hover:bg-white/5 text-[13px] transition-colors w-full text-left"
+                                    >
+                                        <ShieldCheck className="w-4 h-4" />
+                                        Panel Admin
+                                    </Link>
+                                )}
                                 <button
                                     onClick={handleSignOut}
                                     className="flex items-center gap-2.5 px-4 py-2.5 text-zinc-300 hover:text-red-400 hover:bg-white/5 text-[13px] transition-colors w-full text-left cursor-pointer"

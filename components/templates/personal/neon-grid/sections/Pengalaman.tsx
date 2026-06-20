@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { EditableImage } from "../../neo-brutalist/EditableImage";
 import { NEON, type SectionProps } from "../types";
 
 const TABS = [
@@ -29,12 +30,17 @@ const PLACEHOLDER: Record<string, Array<{ tahun: string; judul: string; deskrips
 
 const BG_GLOW = "radial-gradient(ellipse 55% 60% at 75% 50%, rgba(163,230,53,0.04) 0%, transparent 65%)";
 
-export default function Pengalaman({ fotoBisnis, portofolio }: SectionProps) {
+export default function Pengalaman({ fotoBisnis, portofolio, isEditMode, imgPos, setImgPos, pengalaman }: SectionProps) {
     const [activeTab, setActiveTab] = useState(0);
-    const items = PLACEHOLDER[TABS[activeTab].key];
+    // Pakai data user (dari form). Kalau kosong → placeholder biar preview tak hampa.
+    const userItems = pengalaman || [];
+    const hasUser = userItems.length > 0;
+    const items = hasUser
+        ? userItems.filter((p) => p.kategori === TABS[activeTab].key)
+        : PLACEHOLDER[TABS[activeTab].key];
 
     return (
-        <section id="pengalaman" style={{
+        <section id="pengalaman" className="ng-exp-sec" style={{
             backgroundColor: NEON.bg, backgroundImage: BG_GLOW,
             padding: "96px 36px 64px", minHeight: "100vh",
             display: "flex", flexDirection: "column", justifyContent: "flex-start",
@@ -85,8 +91,11 @@ export default function Pengalaman({ fotoBisnis, portofolio }: SectionProps) {
 
                     {/* Right: content list */}
                     <div>
+                        {items.length === 0 && (
+                            <p style={{ fontSize: 14, color: NEON.muted, margin: 0, padding: "8px 0" }}>Belum ada di kategori ini.</p>
+                        )}
                         {items.map((item, i) => (
-                            <div key={`${activeTab}-${i}`} style={{
+                            <div key={`${activeTab}-${i}`} className="ng-exp-row" style={{
                                 display: "grid", gridTemplateColumns: "140px 1fr", gap: 32,
                                 padding: "28px 0",
                                 borderBottom: i < items.length - 1 ? `1px solid ${NEON.hairline}` : "none",
@@ -131,7 +140,7 @@ export default function Pengalaman({ fotoBisnis, portofolio }: SectionProps) {
                             fotoBisnis?.[3] || "",
                         ].filter(Boolean).map((img, i) => (
                             <div key={i} style={{ borderRadius: NEON.lg, overflow: "hidden", border: `1px solid ${NEON.hairline}`, aspectRatio: "4 / 3", background: NEON.card }}>
-                                <img src={img} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                                <EditableImage src={img} alt="" mode="box" isEditMode={isEditMode} pos={imgPos(`exp-${i + 1}`)} onChange={(np) => setImgPos(`exp-${i + 1}`, np)} />
                             </div>
                         ))}
                     </div>
@@ -142,6 +151,10 @@ export default function Pengalaman({ fotoBisnis, portofolio }: SectionProps) {
                 @media (max-width: 900px) {
                     .ng-exp-layout { grid-template-columns: 1fr !important; gap: 24px !important; }
                     .ng-exp-photos { grid-template-columns: repeat(2, 1fr) !important; }
+                }
+                @media (max-width: 768px) {
+                    .ng-exp-sec { min-height: auto !important; padding: 56px 18px !important; }
+                    .ng-exp-row { grid-template-columns: 1fr !important; gap: 8px !important; }
                 }
                 @media (max-width: 560px) {
                     .ng-exp-photos { grid-template-columns: 1fr !important; }

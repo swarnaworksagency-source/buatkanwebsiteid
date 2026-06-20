@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { generateSchema } from '@/lib/validations';
 import { getClientIp, getActiveBan } from '@/lib/ip';
+import { isAdmin } from '@/lib/auth';
 
 // Batas generate per user per hari. Harus sama dengan MAX_DAILY di DashboardClient.
 const MAX_DAILY = 3;
@@ -58,24 +59,27 @@ export async function POST(request: NextRequest) {
     // ─── KUOTA: maksimal MAX_DAILY generate per user per hari (DIPAKSA DI SERVER) ───
     // Cek client-side di /buat hanya untuk UX. Batas sebenarnya WAJIB di sini supaya
     // tidak bisa dilewati dengan memanggil endpoint langsung.
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const { count: todayCount, error: quotaError } = await supabase
-      .from('generate_logs')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .gte('created_at', startOfDay.toISOString());
+    // Admin dikecualikan: tidak ada batas generate harian.
+    if (!isAdmin(user)) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const { count: todayCount, error: quotaError } = await supabase
+        .from('generate_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('created_at', startOfDay.toISOString());
 
-    if (quotaError) {
-      console.error("Quota check error:", quotaError);
-      return NextResponse.json({ error: "Gagal memeriksa kuota generate. Coba lagi." }, { status: 500 });
-    }
+      if (quotaError) {
+        console.error("Quota check error:", quotaError);
+        return NextResponse.json({ error: "Gagal memeriksa kuota generate. Coba lagi." }, { status: 500 });
+      }
 
-    if ((todayCount ?? 0) >= MAX_DAILY) {
-      return NextResponse.json(
-        { error: `Batas generate harian tercapai. Kamu sudah generate ${MAX_DAILY} website hari ini. Coba lagi besok setelah pukul 00.00 WIB.` },
-        { status: 429 }
-      );
+      if ((todayCount ?? 0) >= MAX_DAILY) {
+        return NextResponse.json(
+          { error: `Batas generate harian tercapai. Kamu sudah generate ${MAX_DAILY} website hari ini. Coba lagi besok setelah pukul 00.00 WIB.` },
+          { status: 429 }
+        );
+      }
     }
 
     // Reserve slot kuota SEBELUM memanggil Anthropic (cegah biaya AI kalau pencatatan gagal).
@@ -264,7 +268,7 @@ INSTRUKSI KHUSUS PORTOFOLIO PRIBADI:
 - "deskripsi" = 1 kalimat menarik merangkum masalah → solusi → hasil proyek tsb.
 - "harga" = "" untuk semua (portofolio tidak memakai harga).
 - about.judul & about.deskripsi cerminkan personal brand & keahlian orang ini.
-- about.deskripsi WAJIB SINGKAT: maksimal 1 kalimat (sekitar 15 sampai 22 kata). Ini tampil di hero, jadi harus padat dan langsung kena poin. Kalau bio dari user panjang/bertele, ringkas jadi inti yang menjual.
+- about.deskripsi WAJIB SANGAT SINGKAT & COMPACT: maksimal 1 kalimat, 12 sampai 18 kata, dan TIDAK BOLEH lebih dari 110 karakter. Ini tampil di hero dan dibatasi 3 baris di mobile, jadi harus padat, langsung kena poin, tanpa kata pengisi. Kalau bio dari user panjang/bertele, ringkas jadi inti yang menjual.
 - hero.subheadline juga singkat: maksimal 1 kalimat pendek.
 - Tugas utamamu HANYA: optimasi SEO + bikin kalimat menarik dan RINGKAS. JANGAN mengarang proyek atau fakta baru di luar input.`
       : userPrompt;

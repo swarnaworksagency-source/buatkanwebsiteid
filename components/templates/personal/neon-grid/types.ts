@@ -34,9 +34,13 @@ export const NEON = {
     full: 9999,
 } as const;
 
+export interface ImagePos { x: number; y: number; scale: number }
+
 export interface SectionProps extends Partial<TemplateData> {
     isEditMode: boolean;
     edit: (path: string, val: string) => void;
     name: string;
     waLink: string;
+    imgPos: (id: string) => ImagePos | undefined;
+    setImgPos: (id: string, pos: ImagePos) => void;
 }

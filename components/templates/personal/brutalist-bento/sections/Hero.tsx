@@ -21,7 +21,7 @@ export default function Hero({
 
     const roleRaw = hero?.subheadline || "Creative Director";
     const role = roleRaw.length > 40 ? roleRaw.slice(0, 40) + "…" : roleRaw;
-    const metaTag = "Soni Hartadi";
+    const metaTag = name;
     const portrait = (fotoBisnis && fotoBisnis[0]) || logo || "";
     const ctaText = hero?.ctaText || "Get in Touch";
 
@@ -40,7 +40,7 @@ export default function Hero({
     });
 
     return (
-        <section id="beranda" style={{ padding: "14px 14px 0", background: STUDIO.bg, height: "93vh", boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
+        <section id="beranda" className="bb-hero" style={{ padding: "14px 14px 0", background: STUDIO.bg, height: "93vh", boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
             <div style={{
                 position: "relative", borderRadius: STUDIO.huge,
                 background: STUDIO.gradient, overflow: "hidden",
@@ -188,6 +188,13 @@ export default function Hero({
                     .bb-nav-cta { display: none !important; }
                     .bb-nav-burger { display: flex !important; }
                     .bb-hero-stats { grid-template-columns: repeat(2, 1fr) !important; gap: 24px !important; }
+                }
+                @media (max-width: 768px) {
+                    /* Lepas tinggi tetap 93vh → biar konten mengalir, tidak terpotong/tabrakan. */
+                    .bb-hero { height: auto !important; min-height: 100svh !important; }
+                    .bb-hero nav { padding: 16px 18px !important; }
+                    .bb-hero-grid { padding: 16px 18px 0 !important; gap: 20px !important; }
+                    .bb-hero-stats { padding: 24px 18px 28px !important; margin-top: 24px !important; }
                 }
             `}</style>
         </section>

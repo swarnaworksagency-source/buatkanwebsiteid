@@ -41,7 +41,7 @@ export default function Penutup({
         <>
             {/* ── 6.1 CTA wrapper ── */}
             <section id="kontak" style={{ background: STUDIO.bg, padding: "40px 14px 14px" }}>
-                <div style={{
+                <div className="bb-cta-wrap" style={{
                     position: "relative", overflow: "hidden",
                     borderRadius: STUDIO.huge, background: STUDIO.gradient,
                     padding: "76px 40px", textAlign: "center",
@@ -166,6 +166,10 @@ export default function Penutup({
                 .bb-cta-form input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 1000px transparent inset !important; -webkit-text-fill-color: #fff !important; }
                 @media (max-width: 900px) {
                     .bb-foot { grid-template-columns: 1fr 1fr !important; gap: 32px !important; }
+                }
+                @media (max-width: 768px) {
+                    .bb-cta-wrap { padding: 48px 20px !important; }
+                    .bb-foot { padding: 40px 20px 32px !important; }
                 }
                 @media (max-width: 560px) {
                     .bb-foot { grid-template-columns: 1fr !important; }
