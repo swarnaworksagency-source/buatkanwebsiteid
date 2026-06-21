@@ -41,6 +41,8 @@ export default function Hero({
 
     return (
         <section id="beranda" className="bb-hero" style={{ padding: "14px 14px 0", background: STUDIO.bg, height: "93vh", boxSizing: "border-box", display: "flex", flexDirection: "column" }}>
+            {/* Preload gambar hero (background-image) → LCP. React 19 hoist <link> ke <head>. */}
+            {portrait && <link rel="preload" as="image" href={portrait} fetchPriority="high" />}
             <div style={{
                 position: "relative", borderRadius: STUDIO.huge,
                 background: STUDIO.gradient, overflow: "hidden",

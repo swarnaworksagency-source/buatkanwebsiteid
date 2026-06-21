@@ -54,6 +54,9 @@ export default function HeroSection() {
         <img
           src="/Hero.svg"
           alt="Ilustrasi BuatkanWeb.id"
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
           className="h-full w-auto max-w-full object-contain object-bottom drop-shadow-[0_40px_80px_rgba(103,186,244,0.3)] animate-fade-in-up"
           style={{ animationDelay: "0.2s" }}
         />

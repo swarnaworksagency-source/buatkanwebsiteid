@@ -2,14 +2,19 @@
 // Add new templates here; consuming code needs no changes.
 
 import type { ComponentType } from "react";
+import dynamic from "next/dynamic";
 import type { TemplateData } from "@/types";
-import TemplateSatu from "@/components/templates/jasa/TemplateSatu";
-import TemplateDua from "@/components/templates/jasa/TemplateDua";
-import TemplateTiga from "@/components/templates/jasa/TemplateTiga";
-import TemplateEmpat from "@/components/templates/jasa/TemplateEmpat";
-import TemplatePersonalSatu from "@/components/templates/personal/neo-brutalist";
-import TemplatePersonalDua from "@/components/templates/personal/brutalist-bento";
-import TemplatePersonalTiga from "@/components/templates/personal/neon-grid";
+
+// Lazy-load tiap template lewat next/dynamic supaya halaman (/buat, /preview, /s, dst)
+// HANYA memuat chunk template yang benar-benar dirender — bukan semua template sekaligus.
+// ssr: true → /s/[subdomain] tetap di-render server (SEO/LCP tak terpengaruh).
+const TemplateSatu = dynamic(() => import("@/components/templates/jasa/TemplateSatu"));
+const TemplateDua = dynamic(() => import("@/components/templates/jasa/TemplateDua"));
+const TemplateTiga = dynamic(() => import("@/components/templates/jasa/TemplateTiga"));
+const TemplateEmpat = dynamic(() => import("@/components/templates/jasa/TemplateEmpat"));
+const TemplatePersonalSatu = dynamic(() => import("@/components/templates/personal/neo-brutalist"));
+const TemplatePersonalDua = dynamic(() => import("@/components/templates/personal/brutalist-bento"));
+const TemplatePersonalTiga = dynamic(() => import("@/components/templates/personal/neon-grid"));
 
 interface TemplateProps extends Partial<TemplateData> {
     forceMobile?: boolean;

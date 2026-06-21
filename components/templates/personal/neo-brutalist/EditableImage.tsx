@@ -16,6 +16,8 @@ interface Props {
     mode?: "box" | "free";
     /** posisi tombol kontrol */
     controls?: "tr" | "tl";
+    /** true = gambar above-the-fold (hero/LCP): eager + fetchpriority high. Default lazy. */
+    priority?: boolean;
 }
 
 const ctrlBtn: React.CSSProperties = {
@@ -23,7 +25,7 @@ const ctrlBtn: React.CSSProperties = {
     background: "rgba(0,0,0,0.7)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer",
 };
 
-export function EditableImage({ src, alt, isEditMode, pos, onChange, imgStyle, mode = "box", controls = "tr" }: Props) {
+export function EditableImage({ src, alt, isEditMode, pos, onChange, imgStyle, mode = "box", controls = "tr", priority = false }: Props) {
     const [dragging, setDragging] = useState(false);
     const start = useRef<{ mx: number; my: number; px: number; py: number } | null>(null);
     const wrapRef = useRef<HTMLDivElement>(null);
@@ -37,7 +39,16 @@ export function EditableImage({ src, alt, isEditMode, pos, onChange, imgStyle, m
         : { width: "100%", height: "100%", objectFit: "cover", ...imgStyle, objectPosition: `${p.x}% ${p.y}%`, transform: `scale(${p.scale})`, transformOrigin: "center" };
 
     if (!isEditMode || !onChange) {
-        return <img src={src} alt={alt} loading="lazy" style={imgBase} />;
+        return (
+            <img
+                src={src}
+                alt={alt}
+                loading={priority ? "eager" : "lazy"}
+                fetchPriority={priority ? "high" : "auto"}
+                decoding="async"
+                style={imgBase}
+            />
+        );
     }
 
     const clamp01 = (v: number) => Math.max(0, Math.min(100, v));

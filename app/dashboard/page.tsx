@@ -33,21 +33,21 @@ export default async function DashboardPage() {
         .eq('status', 'preview')
         .lt('expires_at', new Date().toISOString())
 
-    // 2. Get all user's websites
-    const { data: websites } = await supabase
-        .from('websites')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-
-    // Count today's generates from generate_logs (not websites)
+    // 2. Ambil websites + hitung generate hari ini secara PARALEL (query independen).
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    const { count: todayCount } = await supabase
-        .from('generate_logs')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .gte('created_at', today.toISOString())
+    const [{ data: websites }, { count: todayCount }] = await Promise.all([
+        supabase
+            .from('websites')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false }),
+        supabase
+            .from('generate_logs')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .gte('created_at', today.toISOString()),
+    ])
 
     const allWebsites: Website[] = websites?.map(w => ({
         id: w.id,

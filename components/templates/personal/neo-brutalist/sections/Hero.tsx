@@ -145,7 +145,7 @@ export default function Hero({
                 }}>
                     {portrait ? (
                         <EditableImage
-                            src={portrait} alt={name} mode="free"
+                            src={portrait} alt={name} mode="free" priority
                             isEditMode={isEditMode} pos={imgPos("hero")} onChange={(np) => setImgPos("hero", np)}
                             imgStyle={{
                                 height: PORTRAIT_H, width: "auto", maxWidth: "44cqw",

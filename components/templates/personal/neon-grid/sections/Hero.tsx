@@ -33,6 +33,8 @@ export default function Hero({
 
     return (
         <section id="beranda" style={{ background: NEON.bg, padding: "20px 16px 0" }}>
+            {/* Preload gambar hero (background-image) → LCP. React 19 hoist <link> ke <head>. */}
+            {heroImg && <link rel="preload" as="image" href={heroImg} fetchPriority="high" />}
             <div style={{ maxWidth: 1320, margin: "0 auto", width: "100%" }}>
                 {/* ── 1.1 Navigation Dock ── */}
                 <nav style={{
