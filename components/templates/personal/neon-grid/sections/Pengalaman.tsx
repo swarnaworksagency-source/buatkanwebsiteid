@@ -3,30 +3,13 @@
 import { useState } from "react";
 import { EditableImage } from "../../neo-brutalist/EditableImage";
 import { NEON, type SectionProps } from "../types";
+import { PENGALAMAN_PLACEHOLDER as PLACEHOLDER } from "../../pengalamanPlaceholder";
 
 const TABS = [
     { label: "Project / Intern / Work", key: "pekerjaan" },
     { label: "Competition", key: "kompetisi" },
     { label: "Organisasi / Volunteer", key: "organisasi" },
 ];
-
-const PLACEHOLDER: Record<string, Array<{ tahun: string; judul: string; deskripsi: string }>> = {
-    pekerjaan: [
-        { tahun: "2023 – Sekarang", judul: "UI/UX Designer — Freelance", deskripsi: "Merancang antarmuka untuk klien startup dan UMKM, mulai dari wireframe hingga prototype siap handoff." },
-        { tahun: "2022 – 2023", judul: "Frontend Developer — PT. XYZ", deskripsi: "Membangun aplikasi web berbasis React & Next.js, berkolaborasi dengan tim desain dan backend." },
-        { tahun: "2021 – 2022", judul: "Junior Designer — Agensi Kreatif", deskripsi: "Mengerjakan aset visual, landing page, dan identitas brand untuk berbagai klien." },
-    ],
-    kompetisi: [
-        { tahun: "2024", judul: "Juara 1 — Inkubator UNY", deskripsi: "Memenangkan kompetisi inkubator bisnis dengan platform BuatkanWeb.id." },
-        { tahun: "2023", judul: "Finalis — Hackathon Nasional", deskripsi: "Masuk final dari 200+ tim dengan solusi digitalisasi UMKM berbasis AI." },
-        { tahun: "2022", judul: "Top 10 — UI/UX Design Challenge", deskripsi: "Desain aplikasi kesehatan digital yang meraih penilaian tinggi dari juri industri." },
-    ],
-    organisasi: [
-        { tahun: "2023 – Sekarang", judul: "Ketua — Komunitas Desainer Yogyakarta", deskripsi: "Menginisiasi dan memimpin komunitas desainer lokal dengan 200+ anggota aktif." },
-        { tahun: "2022 – 2023", judul: "Divisi Kreatif — BEM Fakultas", deskripsi: "Bertanggung jawab atas identitas visual dan komunikasi kreatif organisasi mahasiswa." },
-        { tahun: "2021 – 2022", judul: "Koordinator — UKM Fotografi", deskripsi: "Mengelola kegiatan dan dokumentasi visual unit kegiatan mahasiswa fotografi." },
-    ],
-};
 
 const BG_GLOW = "radial-gradient(ellipse 55% 60% at 75% 50%, rgba(163,230,53,0.04) 0%, transparent 65%)";
 

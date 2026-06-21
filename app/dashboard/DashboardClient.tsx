@@ -7,18 +7,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { LogOut, Plus, Clock, Loader2, Edit2, Check, X, Rocket, ExternalLink, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
+import { validateSubdomain } from '@/lib/subdomain'
 
 
 const MAIN_DOMAIN = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'buatkanweb.id'
-
-const RESERVED_SUBDOMAINS = [
-    'www', 'api', 'admin', 'dashboard',
-    'app', 'mail', 'smtp', 'ftp', 'blog',
-    'dev', 'staging', 'test', 'demo',
-    'support', 'help', 'docs', 'status',
-    'buat', 'preview', 'auth', 'harga',
-    'portofolio', 'tentang', 'beranda', 's'
-]
 
 interface Website {
     id: string
@@ -233,15 +225,11 @@ export default function DashboardClient({
     }
 
     // ─── Deploy handlers ───
+    // UX live-check. Aturan authoritative ada di lib/subdomain (dipakai server juga).
     const validateSubdomainLocal = useCallback((value: string): string => {
         if (!value) return ''
-        if (value.length < 3) return 'Minimal 3 karakter.'
-        if (value.length > 30) return 'Maksimal 30 karakter.'
-        if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(value) && value.length >= 2) return 'Hanya huruf kecil, angka, dan tanda hubung (-). Tidak boleh diawali/diakhiri tanda hubung.'
-        if (value.length < 2 && !/^[a-z0-9]+$/.test(value)) return 'Hanya huruf kecil dan angka.'
-        if (value.includes('--')) return 'Tidak boleh menggunakan tanda hubung ganda (--).' 
-        if (RESERVED_SUBDOMAINS.includes(value)) return `"${value}" sudah dipesan sistem.`
-        return ''
+        const v = validateSubdomain(value)
+        return v.ok ? '' : v.message
     }, [])
 
     const checkSubdomainAvailability = useCallback(async (value: string) => {

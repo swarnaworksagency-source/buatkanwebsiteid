@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { adminClient } from '@/lib/ip';
 import { paymentIdSchema } from '@/lib/validations';
 
 export async function POST(request: Request) {
@@ -12,30 +11,14 @@ export async function POST(request: Request) {
     }
     const { paymentId } = parsed.data;
 
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet) {
-            try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {}
-          },
-        },
-      }
-    );
-
+    const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Gunakan service role untuk bypass RLS
-    const adminSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Service role untuk bypass RLS (update payment milik user yang sudah diverifikasi).
+    const adminSupabase = adminClient();
 
     // Pastikan payment ini milik user yang login
     const { data: payment, error: verifyError } = await supabase

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { STUDIO, type SectionProps } from "../types";
+import { PENGALAMAN_PLACEHOLDER as PLACEHOLDER } from "../../pengalamanPlaceholder";
 
 const BG_LAYERS = "radial-gradient(ellipse 60% 50% at 70% 40%, rgba(255,204,0,0.06) 0%, transparent 70%), radial-gradient(ellipse 50% 40% at 20% 65%, rgba(255,59,48,0.05) 0%, transparent 70%), radial-gradient(rgba(255,255,255,0.07) 1.4px, transparent 1.4px)";
 const BG_SIZES = "100% 100%, 100% 100%, 28px 28px";
@@ -11,24 +12,6 @@ const TABS = [
     { label: "Kompetisi", key: "kompetisi" },
     { label: "Organisasi", key: "organisasi" },
 ];
-
-const PLACEHOLDER: Record<string, Array<{ tahun: string; judul: string; deskripsi: string }>> = {
-    pekerjaan: [
-        { tahun: "2023 – Sekarang", judul: "UI/UX Designer — Freelance", deskripsi: "Merancang antarmuka untuk klien startup dan UMKM, mulai dari wireframe hingga prototype siap handoff." },
-        { tahun: "2022 – 2023", judul: "Frontend Developer — PT. XYZ", deskripsi: "Membangun aplikasi web berbasis React & Next.js, berkolaborasi dengan tim desain dan backend." },
-        { tahun: "2021 – 2022", judul: "Junior Designer — Agensi Kreatif", deskripsi: "Mengerjakan aset visual, landing page, dan identitas brand untuk berbagai klien." },
-    ],
-    kompetisi: [
-        { tahun: "2024", judul: "Juara 1 — Inkubator UNY", deskripsi: "Memenangkan kompetisi inkubator bisnis dengan platform BuatkanWeb.id." },
-        { tahun: "2023", judul: "Finalis — Hackathon Nasional", deskripsi: "Masuk final dari 200+ tim dengan solusi digitalisasi UMKM berbasis AI." },
-        { tahun: "2022", judul: "Top 10 — UI/UX Design Challenge", deskripsi: "Desain aplikasi kesehatan digital yang meraih penilaian tinggi dari juri industri." },
-    ],
-    organisasi: [
-        { tahun: "2023 – Sekarang", judul: "Ketua — Komunitas Desainer Yogyakarta", deskripsi: "Menginisiasi dan memimpin komunitas desainer lokal dengan 200+ anggota aktif." },
-        { tahun: "2022 – 2023", judul: "Divisi Kreatif — BEM Fakultas", deskripsi: "Bertanggung jawab atas identitas visual dan komunikasi kreatif organisasi mahasiswa." },
-        { tahun: "2021 – 2022", judul: "Koordinator — UKM Fotografi", deskripsi: "Mengelola kegiatan dan dokumentasi visual unit kegiatan mahasiswa fotografi." },
-    ],
-};
 
 export default function Pengalaman({ pengalaman }: SectionProps) {
     const [activeTab, setActiveTab] = useState(0);
