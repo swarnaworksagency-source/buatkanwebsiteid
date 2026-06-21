@@ -1,3 +1,6 @@
+// Wrapper localStorage/sessionStorage yang aman: no-op saat SSR (window undefined)
+// dan saat akses storage dilempar (Safari Private Mode / quota penuh) — supaya draft
+// wizard tak meledakkan render. Selalu lewat helper ini, jangan akses storage langsung.
 export const safeStorage = {
   get: (key: string): string | null => {
     if (typeof window === 'undefined') return null

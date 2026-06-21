@@ -1,3 +1,6 @@
+// Optimasi gambar di CLIENT sebelum upload ke Supabase Storage: raster → WebP +
+// resize (logo maks 400px, lainnya maks 1920px). Tujuan: hemat bandwidth/storage &
+// percepat LCP. SVG dilewati (vektor, tak perlu diraster). Pakai <canvas> di browser.
 export async function convertToWebP(
   file: File,
   quality: number = 0.85
