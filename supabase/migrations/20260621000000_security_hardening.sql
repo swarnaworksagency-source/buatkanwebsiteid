@@ -1,39 +1,33 @@
 -- ============================================================================
--- Security hardening — tutup H1 (payment/authorization bypass) + M2 (dup subdomain)
+-- Security hardening (sudah diterapkan ke project fvwqpwwbgzxokkiqtbqk via MCP)
 -- ============================================================================
--- Konteks: aktivasi website (status -> 'active') + penetapan subdomain kini HANYA
--- lewat server (service role) di /api/website/deploy & /api/payment/create.
--- Migration ini memaksa hal itu di level DB supaya client TIDAK bisa bypass
--- (mis. lewat supabase browser client dari console).
+-- H1 — Payment/authorization bypass:
+--   Aktivasi (status->'active') & penetapan subdomain HANYA lewat server (service role)
+--   di /api/website/deploy & /api/payment/create. Trigger di bawah memaksa di level DB:
+--   client (authenticated/anon) TIDAK boleh ubah status/subdomain/expires_at.
+--   Catatan: kolom websites.subdomain SUDAH punya UNIQUE constraint (M2 aman).
+-- Bonus (advisor): kunci SECURITY DEFINER trigger handle_new_user.
 -- Aman dijalankan ulang (idempotent).
 
 -- ----------------------------------------------------------------------------
--- 1) Kolom dilindungi: status / subdomain / expires_at hanya boleh diubah server.
---    RLS row-level tidak bisa membatasi PER KOLOM, jadi pakai trigger BEFORE UPDATE.
---    Trigger tetap berjalan untuk service_role (bypassrls tidak melewati trigger),
---    maka service_role / postgres di-allow eksplisit; authenticated/anon diblok.
+-- 1) Guard kolom sensitif websites. SECURITY INVOKER (default) WAJIB supaya
+--    current_user = role pemanggil (authenticated/service_role), bukan owner.
 -- ----------------------------------------------------------------------------
 create or replace function public.guard_websites_protected_cols()
 returns trigger
 language plpgsql
-security definer
 set search_path = public, pg_temp
 as $$
 begin
-  -- Server (service role) atau migration (postgres) boleh ubah apa saja.
   if current_user in ('service_role', 'postgres', 'supabase_admin') then
     return new;
   end if;
-
-  -- Client (authenticated/anon) TIDAK boleh mengubah kolom sensitif ini.
   if new.status     is distinct from old.status
      or new.subdomain  is distinct from old.subdomain
      or new.expires_at is distinct from old.expires_at then
-    raise exception
-      'Kolom status/subdomain/expires_at hanya dapat diubah oleh server.'
-      using errcode = '42501'; -- insufficient_privilege
+    raise exception 'Kolom status/subdomain/expires_at hanya dapat diubah oleh server.'
+      using errcode = '42501';
   end if;
-
   return new;
 end;
 $$;
@@ -45,9 +39,8 @@ create trigger trg_guard_websites_protected_cols
   execute function public.guard_websites_protected_cols();
 
 -- ----------------------------------------------------------------------------
--- 2) Cegah dua website memakai subdomain sama (race TOCTOU di cek aplikasi).
---    Partial unique: baris draft dengan subdomain NULL tidak saling bentrok.
+-- 2) Harden trigger handle_new_user (SECURITY DEFINER): search_path tetap +
+--    cabut EXECUTE dari publik (tutup RPC anon/authenticated). Trigger tetap jalan.
 -- ----------------------------------------------------------------------------
-create unique index if not exists websites_subdomain_unique
-  on public.websites (subdomain)
-  where subdomain is not null;
+alter function public.handle_new_user() set search_path = public, pg_temp;
+revoke execute on function public.handle_new_user() from anon, authenticated, public;
