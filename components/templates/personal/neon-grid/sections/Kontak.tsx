@@ -15,7 +15,7 @@ export default function Kontak({
     return (
         <>
             {/* Final CTA card */}
-            <section id="kontak" style={{ backgroundColor: NEON.bg, backgroundImage: "radial-gradient(ellipse 60% 50% at 50% 100%, rgba(163,230,53,0.05) 0%, transparent 65%)", padding: "60px 16px 40px" }}>
+            <section id="kontak" style={{ backgroundColor: NEON.bg, backgroundImage: "radial-gradient(ellipse 60% 50% at 50% 100%, color-mix(in srgb, var(--ng-accent, #a3e635) 5%, transparent) 0%, transparent 65%)", padding: "60px 16px 40px" }}>
                 <div className="ng-cta-wrap" style={{
                     position: "relative", overflow: "hidden", maxWidth: 1280, margin: "0 auto",
                     borderRadius: NEON.huge, background: NEON.lime, color: NEON.onLime,

@@ -20,7 +20,7 @@ export default function Features({
     const img3 = (fotoBisnis && fotoBisnis[3]) || (portofolio && portofolio[2]) || (fotoBisnis && fotoBisnis[0]) || "";
 
     return (
-        <section id="fitur" className="ng-feat-sec" style={{ backgroundColor: NEON.bg, backgroundImage: "radial-gradient(ellipse 50% 60% at 80% 40%, rgba(163,230,53,0.04) 0%, transparent 65%)", padding: "60px 36px 96px", minHeight: "100vh", display: "flex", alignItems: "center" }}>
+        <section id="fitur" className="ng-feat-sec" style={{ backgroundColor: NEON.bg, backgroundImage: "radial-gradient(ellipse 50% 60% at 80% 40%, color-mix(in srgb, var(--ng-accent, #a3e635) 4%, transparent) 0%, transparent 65%)", padding: "60px 36px 96px", minHeight: "100vh", display: "flex", alignItems: "center" }}>
             <div className="ng-feat" style={{
                 maxWidth: 1280, margin: "0 auto", width: "100%",
                 display: "grid", gridTemplateColumns: "5fr 7fr", gap: 40, alignItems: "center",

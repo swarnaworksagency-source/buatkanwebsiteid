@@ -15,7 +15,7 @@ const NAV_LINKS = [
 
 export default function Hero({
     hero, about, fotoBisnis, logo,
-    isEditMode, edit, name, waLink,
+    isEditMode, edit, name, waLink, accent, accentGradient, onAccent,
 }: SectionProps) {
     const [open, setOpen] = useState(false);
 
@@ -34,7 +34,9 @@ export default function Hero({
         const raw = about?.keunggulan?.[i];
         if (raw) {
             const m = raw.match(/^(\d+[^\s]*)\s+(.+)$/);
-            return m ? { value: m[1], label: m[2].toUpperCase() } : { value: "—", label: raw.toUpperCase() };
+            // Format ideal "ANGKA+ Label". Kalau AI tetap kirim kalimat panjang tanpa angka,
+            // potong label jadi maks 2 kata supaya slot statistik tidak berantakan di mobile.
+            return m ? { value: m[1], label: m[2].toUpperCase() } : { value: "—", label: raw.split(/\s+/).slice(0, 2).join(" ").toUpperCase() };
         }
         return fallbackStats[i];
     });
@@ -45,7 +47,7 @@ export default function Hero({
             {portrait && <link rel="preload" as="image" href={portrait} fetchPriority="high" />}
             <div style={{
                 position: "relative", borderRadius: STUDIO.huge,
-                background: STUDIO.gradient, overflow: "hidden",
+                background: accentGradient, overflow: "hidden",
                 flex: 1, display: "flex", flexDirection: "column", isolation: "isolate",
             }}>
                 {/* High-contrast cutout portrait over gradient */}
@@ -108,7 +110,7 @@ export default function Hero({
                             }}>
                             {ctaText}
                             <span style={{
-                                width: 30, height: 30, borderRadius: "50%", background: STUDIO.crimson, color: "#fff",
+                                width: 30, height: 30, borderRadius: "50%", background: accent, color: onAccent || "#fff",
                                 display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                             }}>
                                 <ArrowUpRight size={16} />

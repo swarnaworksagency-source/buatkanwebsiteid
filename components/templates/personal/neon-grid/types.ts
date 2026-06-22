@@ -19,11 +19,12 @@ export const NEON = {
     body:  "#94a3b8",
     muted: "#64748b",
 
-    // Accent (neon lime)
-    lime:    "#a3e635",
-    limeDim: "rgba(163,230,53,0.14)",
-    limeSoft:"rgba(163,230,53,0.30)",
-    onLime:  "#0b1116",
+    // Accent (neon lime) — sekarang lewat CSS var supaya bisa diganti warna pilihan user
+    // (di-set di index.tsx dari warna.primary). Fallback = lime default kalau var tak ada.
+    lime:    "var(--ng-accent, #a3e635)",
+    limeDim: "var(--ng-accent-dim, rgba(163,230,53,0.14))",
+    limeSoft: "var(--ng-accent-soft, rgba(163,230,53,0.30))",
+    onLime:  "var(--ng-on-accent, #0b1116)",
 
     // Radius — large outer panels, medium inner cells
     huge: 40,

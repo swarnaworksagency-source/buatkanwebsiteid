@@ -53,7 +53,10 @@ export function IframePreview({
       setTimeout(() => stale.unmount(), 0);
     }
     if (!rootRef.current) {
-      rootRef.current = createRoot(doc.body);
+      const container = doc.createElement("div");
+      doc.body.innerHTML = "";
+      doc.body.appendChild(container);
+      rootRef.current = createRoot(container);
       rootedBodyRef.current = doc.body;
     }
     setReady(true);

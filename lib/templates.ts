@@ -95,10 +95,12 @@ export const CATEGORIES: TemplateCategory[] = [
 
 export const TEMPLATES_BY_KATEGORI: Record<string, TemplateItem[]> = {
     jasa: [
-        { id: 'jasa-001', nama: 'Minimalist', kategori: 'jasa', status: 'available', badge: 'Populer' },
-        { id: 'jasa-002', nama: 'Klasik', kategori: 'jasa', status: 'available', badge: 'Baru' },
-        { id: 'jasa-003', nama: 'Hangat', kategori: 'jasa', status: 'available', badge: 'Baru' },
-        { id: 'jasa-004', nama: 'Tegas', kategori: 'jasa', status: 'available', badge: 'Baru' },
+        // Sementara hanya jasa-002 (Klasik) yang bisa diakses; sisanya tetap tampil sebagai
+        // kartu "coming soon" (belum bisa dipilih) karena masih perlu polish.
+        { id: 'jasa-001', nama: 'Minimalist', kategori: 'jasa', status: 'coming_soon' },
+        { id: 'jasa-002', nama: 'Klasik', kategori: 'jasa', status: 'available', badge: 'Populer' },
+        { id: 'jasa-003', nama: 'Hangat', kategori: 'jasa', status: 'coming_soon' },
+        { id: 'jasa-004', nama: 'Tegas', kategori: 'jasa', status: 'coming_soon' },
         { id: 'jasa-005', nama: 'Elegant', kategori: 'jasa', status: 'coming_soon' },
         { id: 'jasa-006', nama: 'Colorful', kategori: 'jasa', status: 'coming_soon' },
         { id: 'jasa-007', nama: 'Corporate', kategori: 'jasa', status: 'coming_soon' },
@@ -146,10 +148,7 @@ export const TEMPLATES_BY_KATEGORI: Record<string, TemplateItem[]> = {
 
 // Templates available for preview (not coming_soon)
 export const AVAILABLE_TEMPLATES: Record<string, { name: string; kategori: string }> = {
-    'jasa-001': { name: 'Jasa Minimal', kategori: 'jasa' },
     'jasa-002': { name: 'Jasa Klasik', kategori: 'jasa' },
-    'jasa-003': { name: 'Jasa Hangat', kategori: 'jasa' },
-    'jasa-004': { name: 'Jasa Tegas', kategori: 'jasa' },
     'personal-001': { name: 'Ink and Lime', kategori: 'personal' },
     'personal-002': { name: 'Elegant', kategori: 'personal' },
     'personal-003': { name: 'Modern', kategori: 'personal' },

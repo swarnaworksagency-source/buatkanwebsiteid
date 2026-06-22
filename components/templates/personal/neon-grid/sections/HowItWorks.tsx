@@ -8,7 +8,7 @@ const GENERIC_STEPS = [
     { title: "Serah Terima & Dukungan", desc: "Pengiriman hasil akhir lengkap dengan dukungan setelahnya." },
 ];
 
-const BG_GLOW = "radial-gradient(ellipse 60% 55% at 15% 50%, rgba(163,230,53,0.05) 0%, transparent 65%), radial-gradient(ellipse 40% 40% at 85% 20%, rgba(163,230,53,0.03) 0%, transparent 60%)";
+const BG_GLOW = "radial-gradient(ellipse 60% 55% at 15% 50%, color-mix(in srgb, var(--ng-accent, #a3e635) 5%, transparent) 0%, transparent 65%), radial-gradient(ellipse 40% 40% at 85% 20%, color-mix(in srgb, var(--ng-accent, #a3e635) 3%, transparent) 0%, transparent 60%)";
 
 export default function HowItWorks({ caraKerja, caraKerjaTitle, layanan, about, name }: SectionProps) {
     let steps: Array<{ title: string; desc: string }>;

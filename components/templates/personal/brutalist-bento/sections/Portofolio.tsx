@@ -4,7 +4,7 @@ import { STUDIO, type SectionProps } from "../types";
 const BG_LAYERS = "radial-gradient(ellipse 55% 45% at 80% 30%, rgba(255,59,48,0.06) 0%, transparent 70%), radial-gradient(rgba(255,255,255,0.07) 1.4px, transparent 1.4px)";
 const BG_SIZES = "100% 100%, 28px 28px";
 
-export default function Portofolio({ portofolio, layanan, waLink }: SectionProps) {
+export default function Portofolio({ portofolio, layanan, waLink, accent, accentSoft, onAccent }: SectionProps) {
     if (!portofolio || portofolio.length === 0) return null;
 
     const items = portofolio.map((img, i) => ({
@@ -21,7 +21,7 @@ export default function Portofolio({ portofolio, layanan, waLink }: SectionProps
             <div style={{ maxWidth: 1280, margin: "0 auto", width: "100%" }}>
                 {/* Header */}
                 <div style={{ marginBottom: 44 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: STUDIO.amber, letterSpacing: "0.05em", textTransform: "uppercase" as const, display: "block", marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: accentSoft, letterSpacing: "0.05em", textTransform: "uppercase" as const, display: "block", marginBottom: 10 }}>
                         Selected Work
                     </span>
                     <h2 style={{ fontSize: "clamp(28px, 3.8vw, 46px)", fontWeight: 800, letterSpacing: "-0.045em", lineHeight: 1, color: STUDIO.ink, margin: 0 }}>
@@ -68,8 +68,8 @@ export default function Portofolio({ portofolio, layanan, waLink }: SectionProps
                                             </p>
                                         )}
                                     </div>
-                                    <span style={{ width: 34, height: 34, borderRadius: "50%", background: STUDIO.crimson, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                        <ArrowUpRight size={15} style={{ color: "#fff" }} />
+                                    <span style={{ width: 34, height: 34, borderRadius: "50%", background: accent, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                        <ArrowUpRight size={15} style={{ color: onAccent || "#fff" }} />
                                     </span>
                                 </div>
                             </div>

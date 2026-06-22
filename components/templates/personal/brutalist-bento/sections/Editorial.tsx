@@ -6,7 +6,7 @@ import { EditableImage } from "../../neo-brutalist/EditableImage";
 import { STUDIO, type SectionProps } from "../types";
 
 export default function Editorial({
-    about, fotoBisnis, portofolio, isEditMode, edit, name, waLink, imgPos, setImgPos, keahlian,
+    about, fotoBisnis, portofolio, isEditMode, edit, name, waLink, imgPos, setImgPos, keahlian, accent2, onAccent,
 }: SectionProps) {
     const skills = (keahlian || []).filter((k) => k.nama?.trim());
     const title = about?.judul || "Shaping experiences that make life simpler";
@@ -38,7 +38,7 @@ export default function Editorial({
                         </p>
                         <a href={waLink} target="_blank" rel="noopener noreferrer" style={{
                             display: "inline-flex", alignItems: "center", gap: 10,
-                            background: STUDIO.yellow, color: "#0b0b0c",
+                            background: accent2, color: onAccent || "#0b0b0c",
                             padding: "8px 8px 8px 20px", borderRadius: STUDIO.full,
                             fontSize: 14, fontWeight: 800, textDecoration: "none",
                         }}>

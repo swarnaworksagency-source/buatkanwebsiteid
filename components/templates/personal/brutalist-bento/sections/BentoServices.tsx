@@ -10,7 +10,7 @@ const BG_LAYERS = "radial-gradient(ellipse 70% 60% at 30% 50%, rgba(255,149,0,0.
 const BG_SIZES = "100% 100%, 100% 100%, 28px 28px";
 
 export default function BentoServices({
-    layanan, testimonialPlaceholder, isEditMode, edit,
+    layanan, testimonialPlaceholder, isEditMode, edit, accentSoft, accent2, accentGradient, onAccent,
 }: SectionProps) {
     const services = (layanan && layanan.length > 0) ? layanan : [];
     const people = testimonialPlaceholder || [];
@@ -27,7 +27,7 @@ export default function BentoServices({
         }}>
             {/* ── Section header ── */}
             <div style={{ maxWidth: 1280, margin: "0 auto", width: "100%", marginBottom: 28 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: STUDIO.amber, letterSpacing: "0.05em", textTransform: "uppercase" as const, display: "block", marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: accentSoft, letterSpacing: "0.05em", textTransform: "uppercase" as const, display: "block", marginBottom: 10 }}>
                     My Services
                 </span>
                 <h2 style={{ fontSize: "clamp(28px, 3.6vw, 46px)", fontWeight: 800, color: STUDIO.ink, margin: 0, letterSpacing: "-0.04em", lineHeight: 1 }}>
@@ -63,8 +63,8 @@ export default function BentoServices({
                                     >
                                         <span style={{
                                             width: 36, height: 36, borderRadius: STUDIO.full, flexShrink: 0,
-                                            background: isActive ? STUDIO.yellow : STUDIO.bgElev,
-                                            color: isActive ? "#0b0b0c" : STUDIO.ink,
+                                            background: isActive ? accent2 : STUDIO.bgElev,
+                                            color: isActive ? (onAccent || "#0b0b0c") : STUDIO.ink,
                                             display: "flex", alignItems: "center", justifyContent: "center",
                                             fontSize: 14, fontWeight: 800,
                                             border: isActive ? "none" : `1px solid ${STUDIO.hairline}`,
@@ -94,7 +94,7 @@ export default function BentoServices({
                     }}>
                         <div>
                             <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
-                                <span style={{ fontSize: 11, fontWeight: 800, color: "#0b0b0c", background: STUDIO.yellow, padding: "4px 12px", borderRadius: STUDIO.full, letterSpacing: "0.05em", textTransform: "uppercase" as const }}>
+                                <span style={{ fontSize: 11, fontWeight: 800, color: onAccent || "#0b0b0c", background: accent2, padding: "4px 12px", borderRadius: STUDIO.full, letterSpacing: "0.05em", textTransform: "uppercase" as const }}>
                                     Testimonials
                                 </span>
                                 <h3 style={{ fontSize: 19, fontWeight: 800, color: STUDIO.ink, margin: 0, letterSpacing: "-0.02em" }}>What clients say</h3>
@@ -106,7 +106,7 @@ export default function BentoServices({
                         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                             <div style={{
                                 width: 52, height: 52, borderRadius: "50%", flexShrink: 0,
-                                background: STUDIO.gradient, color: "#fff",
+                                background: accentGradient, color: onAccent || "#fff",
                                 display: "flex", alignItems: "center", justifyContent: "center",
                                 fontSize: 16, fontWeight: 800,
                             }}>
@@ -121,7 +121,7 @@ export default function BentoServices({
                                 {people.map((_, i) => (
                                     <button key={i} onClick={() => setSelected(i)} style={{
                                         width: 8, height: 8, borderRadius: "50%", border: "none", cursor: "pointer",
-                                        background: i === selected ? STUDIO.yellow : STUDIO.muted,
+                                        background: i === selected ? accent2 : STUDIO.muted,
                                         padding: 0, transition: "background 0.18s",
                                     }} />
                                 ))}

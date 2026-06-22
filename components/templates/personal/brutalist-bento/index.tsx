@@ -1,6 +1,7 @@
 "use client";
 
 import type { TemplateData } from "@/types";
+import { readableOn } from "@/lib/color";
 import { STUDIO } from "./types";
 import Hero from "./sections/Hero";
 import Editorial from "./sections/Editorial";
@@ -80,10 +81,24 @@ export default function BrutalistBento({
         ? `${waBase}?text=Halo%20${encodeURIComponent(name)}%2C%20saya%20tertarik%20dengan%20layanan%20Anda`
         : "#";
 
+    // Warna tema utama dari form ("Preferensi Warna"). Kalau user BELUM pilih warna,
+    // pakai palet oranye asli bento (crimson/amber/gradient) — dipakai juga di galeri/preview.
+    const customAccent = (warna?.primary || "").trim();
+    const accent = customAccent || STUDIO.crimson;   // dot / ikon
+    const accentSoft = customAccent || STUDIO.amber;  // label eyebrow
+    const accent2 = customAccent || STUDIO.yellow;    // highlight (badge/tombol/aktif)
+    // Teks/ikon di atas bidang aksen. Kosong saat default → tiap tempat pakai default aslinya
+    // (#0b0b0c di atas yellow, #fff di atas crimson/gradient). Saat custom → auto kontras.
+    const onAccent = customAccent ? readableOn(customAccent) : "";
+    const accentGradient = customAccent
+        ? `linear-gradient(120deg, ${customAccent} 0%, color-mix(in srgb, ${customAccent}, #ffffff 18%) 100%)`
+        : STUDIO.gradient;
+
     const sectionProps = {
         hero, about, layanan, testimonialPlaceholder, paketHarga, footer,
         namaBisnis, lokasi, kontak, sosmed, warna, logo, fotoBisnis, portofolio, keahlian, pengalaman,
         name, waLink, waBase, isEditMode, edit, imgPos, setImgPos,
+        accent, accentSoft, accent2, accentGradient, onAccent,
     };
 
     return (

@@ -15,7 +15,7 @@ const COMPANY_LINKS = [
 
 export default function Penutup({
     footer, about, layanan, kontak, sosmed, lokasi,
-    isEditMode, edit, name, waBase,
+    isEditMode, edit, name, waBase, accentGradient, accent2, onAccent,
 }: SectionProps) {
     const [email, setEmail] = useState("");
 
@@ -43,12 +43,12 @@ export default function Penutup({
             <section id="kontak" style={{ background: STUDIO.bg, padding: "40px 14px 14px" }}>
                 <div className="bb-cta-wrap" style={{
                     position: "relative", overflow: "hidden",
-                    borderRadius: STUDIO.huge, background: STUDIO.gradient,
+                    borderRadius: STUDIO.huge, background: accentGradient,
                     padding: "76px 40px", textAlign: "center",
                 }}>
                     <h2 style={{
                         fontSize: "clamp(36px, 5.4vw, 72px)", fontWeight: 800,
-                        letterSpacing: "-0.045em", lineHeight: 0.98, color: "#fff", margin: "0 auto 32px", maxWidth: 760,
+                        letterSpacing: "-0.045em", lineHeight: 0.98, color: onAccent || "#fff", margin: "0 auto 32px", maxWidth: 760,
                     }}>
                         <EditableText
                             value={ctaHeading}
@@ -78,7 +78,7 @@ export default function Penutup({
                         />
                         <button onClick={submit} style={{
                             display: "inline-flex", alignItems: "center", gap: 8, flexShrink: 0,
-                            background: STUDIO.yellow, color: "#0b0b0c", border: "none", cursor: "pointer",
+                            background: accent2, color: onAccent || "#0b0b0c", border: "none", cursor: "pointer",
                             padding: "12px 22px", borderRadius: STUDIO.full, fontSize: 14, fontWeight: 800, whiteSpace: "nowrap",
                         }}>
                             {footer?.ctaText || "Get In Touch Today"}
@@ -92,8 +92,8 @@ export default function Penutup({
             </section>
 
             {/* ── 6.2 Solid utility footer (electric yellow) ── */}
-            <footer style={{ background: STUDIO.yellow, color: "#0b0b0c", padding: "14px" }}>
-                <div style={{ borderRadius: STUDIO.huge, background: STUDIO.yellow }}>
+            <footer style={{ background: accent2, color: onAccent || "#0b0b0c", padding: "14px" }}>
+                <div style={{ borderRadius: STUDIO.huge, background: accent2 }}>
                     <div className="bb-foot" style={{
                         maxWidth: 1280, margin: "0 auto", padding: "56px 32px 40px",
                         display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1.4fr", gap: 32,
@@ -103,7 +103,7 @@ export default function Penutup({
                             <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 14 }}>
                                 {name}
                             </div>
-                            <p style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(11,11,12,0.72)", margin: 0, maxWidth: 280 }}>
+                            <p style={{ fontSize: 14, lineHeight: 1.6, color: "color-mix(in srgb, currentColor 72%, transparent)", margin: 0, maxWidth: 280 }}>
                                 {tagline.length > 130 ? tagline.slice(0, 130) + "…" : tagline}
                             </p>
                         </div>
@@ -152,9 +152,9 @@ export default function Penutup({
 
                     {/* Bottom bar */}
                     <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 32px 48px" }}>
-                        <div style={{ borderTop: "1px solid rgba(11,11,12,0.18)", paddingTop: 24, fontSize: 13, color: "rgba(11,11,12,0.7)" }}>
+                        <div style={{ borderTop: "1px solid color-mix(in srgb, currentColor 18%, transparent)", paddingTop: 24, fontSize: 13, color: "color-mix(in srgb, currentColor 70%, transparent)" }}>
                             © {new Date().getFullYear()} {name} · Dibuat dengan{" "}
-                            <a href="https://buatkanweb.id" style={{ color: "#0b0b0c", fontWeight: 700, textDecoration: "none" }}>BuatkanWeb.id</a>
+                            <a href="https://buatkanweb.id" style={{ color: "currentColor", fontWeight: 700, textDecoration: "none" }}>BuatkanWeb.id</a>
                         </div>
                     </div>
                 </div>
@@ -189,5 +189,5 @@ const footListStyle: React.CSSProperties = {
     listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 11,
 };
 const footLinkStyle: React.CSSProperties = {
-    fontSize: 14, fontWeight: 600, color: "rgba(11,11,12,0.78)", textDecoration: "none",
+    fontSize: 14, fontWeight: 600, color: "color-mix(in srgb, currentColor 78%, transparent)", textDecoration: "none",
 };

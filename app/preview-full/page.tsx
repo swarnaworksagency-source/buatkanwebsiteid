@@ -8,13 +8,13 @@ import { safeStorage } from "@/lib/storage";
 
 export default function PreviewFullPage() {
   const [data, setData] = useState<TemplateData | null>(null);
-  const [templateId, setTemplateId] = useState<string>("jasa-001");
+  const [templateId, setTemplateId] = useState<string>("jasa-002");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     try {
       const stored = safeStorage.get("zp_preview_data");
-      const tpl = safeStorage.get("zp_preview_template") || safeStorage.get("selected_template") || "jasa-001";
+      const tpl = safeStorage.get("zp_preview_template") || safeStorage.get("selected_template") || "jasa-002";
       setTemplateId(tpl);
       if (stored) {
         const parsed = JSON.parse(stored);

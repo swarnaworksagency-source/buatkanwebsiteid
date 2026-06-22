@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
       pekerjaan,
       gayaHidup,
       nuansaDesain,
-      proyekPortofolio
+      proyekPortofolio,
+      keahlian
     } = parsedBody.data;
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -165,6 +166,18 @@ PRINSIP UTAMA — INPUT USER = BAHAN MENTAH, BUKAN OUTPUT:
         ).join("\n")
       : "";
 
+    // Keahlian (mode portfolio): user bebas menulis deskripsi sepanjang apapun.
+    // AI bertugas MERINGKAS deskripsi tiap keahlian jadi padat (lihat instruksi portofolio).
+    const keahlianInput = Array.isArray(keahlian)
+      ? keahlian.filter((k) => k && typeof k.nama === "string" && k.nama.trim())
+      : [];
+    const hasKeahlian = keahlianInput.length > 0;
+    const keahlianFormatted = hasKeahlian
+      ? keahlianInput.map((k, i: number) =>
+          `Keahlian ${i + 1}: ${k.nama.trim()}\n  - Deskripsi mentah dari user: ${k.deskripsi?.trim() || "(kosong)"}`
+        ).join("\n")
+      : "";
+
     const userPrompt = `Buatkan konten website lengkap untuk bisnis ini:
 
 === DATA BISNIS ===
@@ -269,8 +282,20 @@ INSTRUKSI KHUSUS PORTOFOLIO PRIBADI:
 - "harga" = "" untuk semua (portofolio tidak memakai harga).
 - about.judul & about.deskripsi cerminkan personal brand & keahlian orang ini.
 - about.deskripsi WAJIB SANGAT SINGKAT & COMPACT: maksimal 1 kalimat, 12 sampai 18 kata, dan TIDAK BOLEH lebih dari 110 karakter. Ini tampil di hero dan dibatasi 3 baris di mobile, jadi harus padat, langsung kena poin, tanpa kata pengisi. Kalau bio dari user panjang/bertele, ringkas jadi inti yang menjual.
-- hero.subheadline juga singkat: maksimal 1 kalimat pendek.
+- hero.subheadline = ROLE / PROFESI singkat orang ini, BUKAN kalimat bio. Maksimal 5 kata, gaya jabatan. Contoh: "UI/UX Designer & Developer", "Robotics & Embedded Engineer". Ini tampil sebagai sub-judul di hero; kalimat panjang merusak layout. JANGAN isi dengan bio/deskripsi.
+- about.keunggulan WAJIB TEPAT 3 item bergaya STATISTIK, tiap item format "ANGKA+ LABEL" dengan label MAKSIMAL 2 kata. Contoh persis: "4+ Tahun Pengalaman", "${proyekPortofolio?.length || 3}+ Proyek Selesai", "30+ Klien Puas". WAJIB diawali angka lalu tanda "+". DILARANG menulis kalimat panjang/klaim deskriptif di sini (jelek di mobile, dan slot ini cuma muat angka + label pendek). Untuk item "Proyek" pakai jumlah proyek yang diberikan (${proyekPortofolio?.length || 0}). Angka tahun & klien pakai angka wajar dan rendah hati, jangan dibuat besar berlebihan.
 - Tugas utamamu HANYA: optimasi SEO + bikin kalimat menarik dan RINGKAS. JANGAN mengarang proyek atau fakta baru di luar input.`
+        + (hasKeahlian ? `
+
+=== DAFTAR KEAHLIAN (deskripsi mentah dari user) ===
+${keahlianFormatted}
+
+INSTRUKSI KEAHLIAN:
+- Tambahkan array "keahlian" di JSON output, TEPAT satu entri per keahlian di atas, URUT SAMA dan jumlah SAMA.
+- Tiap entri: { "nama": "<SALIN PERSIS nama keahlian dari user, JANGAN diubah>", "deskripsi": "<ringkasan padat>" }.
+- "deskripsi": ringkas "Deskripsi mentah dari user" jadi SATU frasa/kalimat padat yang langsung ke inti. WAJIB maks 90 karakter. Buang kata pengisi, jangan bertele, jangan mengulang nama keahlian. Pertahankan inti makna & fakta dari user, JANGAN mengarang hal baru.
+- Kalau deskripsi mentah kosong: buat deskripsi singkat (maks 90 karakter) yang wajar dari nama keahlian itu, tanpa mengarang angka/klaim palsu.
+- Ini tampil di kartu keahlian yang dibatasi 3 baris. Teks lebih panjang dari 90 karakter MERUSAK layout, jadi RINGKAS bukan dipotong di tengah.` : "")
       : userPrompt;
 
     const stream = await client.messages.stream({

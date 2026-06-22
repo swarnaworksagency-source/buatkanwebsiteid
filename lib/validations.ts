@@ -13,6 +13,13 @@ const paketSchema = z.object({
   isPopuler: z.boolean().optional(),
 });
 
+// Keahlian (mode portfolio). deskripsi dibiarkan LONGGAR (user bebas tulis sepanjang
+// apapun) — AI yang akan meringkasnya jadi padat. Batas 2000 hanya pagar anti-abuse.
+const keahlianSchema = z.object({
+  nama: z.string().max(60).default(''),
+  deskripsi: z.string().max(2000).default(''),
+});
+
 const proyekSchema = z.object({
   namaProyek: z.string().max(200).default(''),
   kategori: z.string().max(150).default(''),
@@ -37,6 +44,7 @@ export const generateSchema = z.object({
   gayaHidup: z.array(z.string().max(100)).max(50).optional(),
   nuansaDesain: z.string().max(50).optional(),
   proyekPortofolio: z.array(proyekSchema).max(30).optional(),
+  keahlian: z.array(keahlianSchema).max(20).optional(),
 });
 
 // Body endpoint berbasis id (UUID Supabase).

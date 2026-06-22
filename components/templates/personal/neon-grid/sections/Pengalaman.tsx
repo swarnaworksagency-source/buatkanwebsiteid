@@ -11,7 +11,7 @@ const TABS = [
     { label: "Organisasi / Volunteer", key: "organisasi" },
 ];
 
-const BG_GLOW = "radial-gradient(ellipse 55% 60% at 75% 50%, rgba(163,230,53,0.04) 0%, transparent 65%)";
+const BG_GLOW = "radial-gradient(ellipse 55% 60% at 75% 50%, color-mix(in srgb, var(--ng-accent, #a3e635) 4%, transparent) 0%, transparent 65%)";
 
 export default function Pengalaman({ fotoBisnis, portofolio, isEditMode, imgPos, setImgPos, pengalaman }: SectionProps) {
     const [activeTab, setActiveTab] = useState(0);
@@ -21,6 +21,10 @@ export default function Pengalaman({ fotoBisnis, portofolio, isEditMode, imgPos,
     const items = hasUser
         ? userItems.filter((p) => p.kategori === TABS[activeTab].key)
         : PLACEHOLDER[TABS[activeTab].key];
+
+    // Foto strip = HANYA foto galeri yang user isi (fotoBisnis[1..4]), tanpa fallback ke foto hero.
+    // 3 input → 3 tampil; strip dipusatkan (lihat maxWidth + margin auto di bawah).
+    const expPhotos = [fotoBisnis?.[1], fotoBisnis?.[2], fotoBisnis?.[3], fotoBisnis?.[4]].filter(Boolean) as string[];
 
     return (
         <section id="pengalaman" className="ng-exp-sec" style={{
@@ -112,16 +116,11 @@ export default function Pengalaman({ fotoBisnis, portofolio, isEditMode, imgPos,
                 </div>
             </div>
 
-            {/* Photos strip */}
-            {(fotoBisnis && fotoBisnis.length > 0) && (
+            {/* Photos strip — hanya foto yang diisi, jumlah kolom = jumlah foto, dipusatkan. */}
+            {expPhotos.length > 0 && (
                 <div style={{ maxWidth: 1280, margin: "48px auto 0", width: "100%" }}>
-                    <div className="ng-exp-photos" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-                        {[
-                            fotoBisnis?.[4] || fotoBisnis?.[0] || "",
-                            fotoBisnis?.[1] || "",
-                            fotoBisnis?.[2] || "",
-                            fotoBisnis?.[3] || "",
-                        ].filter(Boolean).map((img, i) => (
+                    <div className="ng-exp-photos" style={{ display: "grid", gridTemplateColumns: `repeat(${expPhotos.length}, 1fr)`, gap: 16, maxWidth: expPhotos.length * 312, marginInline: "auto" }}>
+                        {expPhotos.map((img, i) => (
                             <div key={i} style={{ borderRadius: NEON.lg, overflow: "hidden", border: `1px solid ${NEON.hairline}`, aspectRatio: "4 / 3", background: NEON.card }}>
                                 <EditableImage src={img} alt="" mode="box" isEditMode={isEditMode} pos={imgPos(`exp-${i + 1}`)} onChange={(np) => setImgPos(`exp-${i + 1}`, np)} />
                             </div>

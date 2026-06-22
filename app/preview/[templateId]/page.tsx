@@ -113,6 +113,11 @@ export default async function PreviewTemplatePage(props: {
     // Pilih dummy data sesuai template
     const isPersonal = templateId.startsWith('personal')
     let finalData = isPersonal ? DUMMY_DATA_PERSONAL : DUMMY_DATA
+    // Template 2 (brutalist-bento) di galeri/preview tetap pakai palet oranye aslinya
+    // (bukan warna default personal). Kosongkan primary → template fallback ke STUDIO oranye.
+    if (!isUUID && templateId === 'personal-002') {
+        finalData = { ...finalData, warna: { ...finalData.warna, primary: '' } }
+    }
     // Template yang dipakai untuk render. Untuk UUID, ambil dari kolom template_id website.
     let resolvedTemplateId = templateId
 

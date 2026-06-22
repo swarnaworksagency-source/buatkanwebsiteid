@@ -15,13 +15,16 @@ const NAV_LINKS = [
 ];
 
 export default function Hero({
-    hero, about, fotoBisnis, logo, sosmed,
+    hero, about, fotoBisnis, logo, sosmed, namaPanggilan, warna,
     isEditMode, edit, name, waLink,
 }: SectionProps) {
     const [open, setOpen] = useState(false);
 
-    const taglineWhite = hero?.headline || "Play Smarter.";
-    const taglineLime = hero?.subheadline || "Improve Faster.";
+    // Baris putih = nama panggilan saja. Baris bawah (warna) = role.
+    // Warna role bisa dikustom lewat "Preferensi Warna" (fallback ke neon lime).
+    const accent = (warna?.primary || "").trim() || NEON.lime;
+    const taglineWhite = namaPanggilan || name || hero?.headline || "Nama Kamu";
+    const taglineLime = hero?.subheadline || "Role / Profesi Kamu";
     const subtext = about?.deskripsi || "";
     const heroImg = (fotoBisnis && fotoBisnis[0]) || logo || "";
     const ctaText = hero?.ctaText || "Hubungi via WhatsApp";
@@ -148,12 +151,12 @@ export default function Hero({
                                 <span style={{ display: "block", color: "#fff" }}>
                                     <EditableText
                                         value={taglineWhite}
-                                        onChange={(v: string) => edit("hero.headline", v)}
+                                        onChange={(v: string) => edit("namaPanggilan", v)}
                                         isEditMode={isEditMode}
                                         as="span"
                                     />
                                 </span>
-                                <span style={{ display: "block", color: NEON.lime }}>
+                                <span style={{ display: "block", color: accent }}>
                                     <EditableText
                                         value={taglineLime}
                                         onChange={(v: string) => edit("hero.subheadline", v)}
@@ -181,8 +184,8 @@ export default function Hero({
                             <a href={waLink} target="_blank" rel="noopener noreferrer" style={{
                                 display: "inline-flex", alignItems: "center", justifyContent: "space-between", gap: 14,
                                 // Glossy seperti tombol "Lihat Proyek", tapi warna lime.
-                                background: "rgba(163,230,53,0.14)", color: NEON.lime,
-                                border: "1px solid rgba(163,230,53,0.5)", backdropFilter: "blur(6px)",
+                                background: "color-mix(in srgb, var(--ng-accent, #a3e635) 14%, transparent)", color: NEON.lime,
+                                border: "1px solid color-mix(in srgb, var(--ng-accent, #a3e635) 50%, transparent)", backdropFilter: "blur(6px)",
                                 padding: "14px 18px", borderRadius: NEON.md, minWidth: 220,
                                 fontSize: 14, fontWeight: 700, textDecoration: "none",
                             }}>

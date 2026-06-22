@@ -44,4 +44,13 @@ export interface SectionProps extends Partial<TemplateData> {
     waBase: string;
     imgPos: (id: string) => ImagePos | undefined;
     setImgPos: (id: string, pos: ImagePos) => void;
+    // Warna tema utama dari form ("Preferensi Warna").
+    // accent = solid (dot/ikon), accentSoft = eyebrow label, accent2 = highlight (eks-yellow),
+    // accentGradient = gradient, onAccent = warna teks/ikon di ATAS bidang aksen (kosong = pakai default).
+    // Saat user belum pilih warna, semua jatuh ke palet oranye asli (crimson/amber/yellow/gradient).
+    accent: string;
+    accentSoft: string;
+    accent2: string;
+    accentGradient: string;
+    onAccent: string;
 }

@@ -5,7 +5,7 @@ export default function Testimoni({ testimonialPlaceholder }: SectionProps) {
     if (!testimonialPlaceholder || testimonialPlaceholder.length === 0) return null;
 
     return (
-        <section id="testimoni" className="ng-test-sec" style={{ backgroundColor: NEON.bg, backgroundImage: "radial-gradient(ellipse 45% 55% at 85% 30%, rgba(163,230,53,0.04) 0%, transparent 60%), radial-gradient(ellipse 40% 40% at 10% 70%, rgba(163,230,53,0.03) 0%, transparent 60%)", padding: "60px 36px", minHeight: "100vh", display: "flex", alignItems: "center" }}>
+        <section id="testimoni" className="ng-test-sec" style={{ backgroundColor: NEON.bg, backgroundImage: "radial-gradient(ellipse 45% 55% at 85% 30%, color-mix(in srgb, var(--ng-accent, #a3e635) 4%, transparent) 0%, transparent 60%), radial-gradient(ellipse 40% 40% at 10% 70%, color-mix(in srgb, var(--ng-accent, #a3e635) 3%, transparent) 0%, transparent 60%)", padding: "60px 36px", minHeight: "100vh", display: "flex", alignItems: "center" }}>
             <div style={{ maxWidth: 1280, margin: "0 auto", width: "100%" }}>
                 <div style={{ marginBottom: 44 }}>
                     <h2 style={{ fontSize: "clamp(28px, 3.6vw, 44px)", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.05, color: "#fff", margin: 0 }}>

@@ -13,7 +13,7 @@ const TABS = [
     { label: "Organisasi", key: "organisasi" },
 ];
 
-export default function Pengalaman({ pengalaman }: SectionProps) {
+export default function Pengalaman({ pengalaman, accentSoft, accent2, onAccent }: SectionProps) {
     const [activeTab, setActiveTab] = useState(0);
     // Pakai data user (dari form). Kalau kosong → placeholder biar preview tak hampa.
     const userItems = pengalaman || [];
@@ -31,7 +31,7 @@ export default function Pengalaman({ pengalaman }: SectionProps) {
             <div style={{ maxWidth: 1280, margin: "0 auto", width: "100%" }}>
                 {/* Header */}
                 <div style={{ marginBottom: 28 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: STUDIO.amber, letterSpacing: "0.05em", textTransform: "uppercase" as const, display: "block", marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: accentSoft, letterSpacing: "0.05em", textTransform: "uppercase" as const, display: "block", marginBottom: 10 }}>
                         Track Record
                     </span>
                     <h2 style={{ fontSize: "clamp(28px, 3.6vw, 46px)", fontWeight: 800, color: STUDIO.ink, margin: 0, letterSpacing: "-0.04em", lineHeight: 1 }}>
@@ -46,8 +46,8 @@ export default function Pengalaman({ pengalaman }: SectionProps) {
                         return (
                             <button key={tab.key} onClick={() => setActiveTab(i)} style={{
                                 padding: "10px 22px", borderRadius: STUDIO.full, cursor: "pointer",
-                                background: isActive ? STUDIO.yellow : STUDIO.card,
-                                color: isActive ? "#0b0b0c" : STUDIO.body,
+                                background: isActive ? accent2 : STUDIO.card,
+                                color: isActive ? (onAccent || "#0b0b0c") : STUDIO.body,
                                 fontSize: 14, fontWeight: 700,
                                 border: isActive ? "none" : `1px solid ${STUDIO.hairline}` as any,
                                 transition: "background 0.18s, color 0.18s",

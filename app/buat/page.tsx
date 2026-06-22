@@ -6,6 +6,7 @@ import type { TemplateData, FormData, PaketHarga, ProyekPortofolio, KeahlianItem
 import { getTemplateComponent, getTemplateKategori } from "@/lib/templateRegistry";
 import { createClient } from "@/lib/supabase";
 import { convertToWebP } from "@/lib/imageUtils";
+import { uploadAsset } from "@/lib/uploadAsset";
 import { SearchableCombobox } from "@/components/ui/SearchableCombobox";
 import { safeStorage } from '@/lib/storage';
 import { AutocompleteInput } from "@/components/ui/AutocompleteInput";
@@ -21,6 +22,8 @@ import {
 } from "lucide-react";
 
 /* ═══ CONSTANTS ═══ */
+// Tahun pengalaman: dropdown dari tahun sekarang mundur ke 1980 (descending).
+const TAHUN_OPTIONS = Array.from({ length: new Date().getFullYear() - 1979 }, (_, i) => String(new Date().getFullYear() - i));
 const USIA_OPTIONS = ["17-25 tahun", "26-35 tahun", "36-45 tahun", "46-55 tahun", "55+ tahun"];
 const STATUS_OPTIONS = ["Lajang", "Menikah", "Menikah dengan anak", "Orang tua tunggal", "Lansia"];
 const PEKERJAAN_OPTIONS = ["Pelajar/Mahasiswa", "Karyawan Swasta", "PNS", "Wirausaha", "Ibu Rumah Tangga", "Freelancer", "Profesional (Dokter/Lawyer/dll)"];
@@ -194,6 +197,14 @@ function BuatContent() {
   // bukan beda karena lebar render berbeda. Template pakai container-query (cqw).
   const desktopFrameRef = useRef<HTMLDivElement>(null);
   const desktopContentRef = useRef<HTMLDivElement>(null);
+  // Scroll otomatis ke slot proyek baru setelah "Tambah Proyek" (user sering tak sadar slot bertambah).
+  const proyekEndRef = useRef<HTMLDivElement>(null);
+  const shouldScrollProyek = useRef(false);
+  useEffect(() => {
+    if (!shouldScrollProyek.current) return;
+    shouldScrollProyek.current = false;
+    proyekEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [formData.proyekPortofolio.length]);
   const [desktopScale, setDesktopScale] = useState(0.5);
   const [desktopContentHeight, setDesktopContentHeight] = useState(0);
   const [desktopWidth, setDesktopWidth] = useState(1440);
@@ -229,12 +240,12 @@ function BuatContent() {
 
   const [kategoriSuggestions, setKategoriSuggestions] = useState<string[]>([]);
   const [layananOptions, setLayananOptions] = useState<string[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('jasa-001');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('jasa-002');
   const TemplateComponent = getTemplateComponent(selectedTemplateId);
 
   useEffect(() => {
     const selectedKategori = typeof window !== 'undefined' ? safeStorage.get("selected_kategori") : null;
-    const tplId = typeof window !== 'undefined' ? (safeStorage.get("selected_template") || 'jasa-001') : 'jasa-001';
+    const tplId = typeof window !== 'undefined' ? (safeStorage.get("selected_template") || 'jasa-002') : 'jasa-002';
     setSelectedTemplateId(tplId);
     // Semua template kategori 'personal' (personal-001/002/003) pakai formulir portofolio.
     setFormMode(getTemplateKategori(tplId) === 'personal' ? 'portfolio' : 'jasa');
@@ -415,9 +426,10 @@ function BuatContent() {
       loadedFormData.logo = data.logo_url || "";
       loadedFormData.portofolio = data.foto_urls || [];
       loadedFormData.fotoBisnis = data.generated_content?.fotoBisnis || [];
-      // Guard field baru untuk website lama yang __formData-nya belum punya keahlianList.
+      // Guard field baru untuk website lama yang __formData-nya belum punya array-array ini.
       if (!Array.isArray(loadedFormData.keahlianList)) loadedFormData.keahlianList = [];
       if (!Array.isArray(loadedFormData.proyekPortofolio)) loadedFormData.proyekPortofolio = [];
+      if (!Array.isArray(loadedFormData.pengalaman)) loadedFormData.pengalaman = [];
 
       setFormData(loadedFormData);
 
@@ -607,7 +619,9 @@ function BuatContent() {
         formData.gayaHidup.length > 0
       );
     }
-    if (step === 2) return !!formData.tema;
+    // Mode portfolio: Nuansa (tema) disembunyikan & tidak dipakai template personal,
+    // jadi step 3 tidak mensyaratkannya. Mode jasa tetap wajib pilih tema.
+    if (step === 2) return formMode === "portfolio" ? true : !!formData.tema;
     return false;
   };
 
@@ -710,6 +724,7 @@ function BuatContent() {
   const addProyek = () => {
     updateField("proyekPortofolio", [...formData.proyekPortofolio, EMPTY_PROYEK()]);
     setProyekFotoFiles((prev) => [...prev, null]);
+    shouldScrollProyek.current = true; // scroll ke slot baru setelah render (lihat useEffect)
   };
   const removeProyek = (index: number) => {
     updateField("proyekPortofolio", formData.proyekPortofolio.filter((_, i) => i !== index));
@@ -788,21 +803,10 @@ function BuatContent() {
         throw new Error("Batas generate harian tercapai. Kamu sudah generate 3 website hari ini. Coba lagi besok setelah pukul 00.00 WIB.");
       }
 
-      // Upload function — uses File objects directly for reliable upload
+      // Upload via helper dgn token user eksplisit (hindari regresi propagasi token SDK).
       const uploadFile = async (file: File, folder: string) => {
         try {
-          const fileExt = file.name.split('.').pop() || 'png';
-          const fileName = `${user.id}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-          const filePath = `${folder}/${fileName}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from('website-assets')
-            .upload(filePath, file, { upsert: true });
-
-          if (uploadError) throw uploadError;
-
-          const { data: publicUrlData } = supabase.storage.from('website-assets').getPublicUrl(filePath);
-          return publicUrlData.publicUrl;
+          return await uploadAsset(supabase, file, folder, user.id);
         } catch (e: any) {
           console.error("Upload error:", e);
           throw new Error(`Gagal upload gambar (${folder}). Detail: ${e.message || 'Kesalahan tidak diketahui'}.`);
@@ -853,8 +857,11 @@ function BuatContent() {
       const fotoBisnisUrls = await Promise.all(fotoBisnisUploadPromises);
 
       // Call API — mode portfolio kirim hanya proyek berfoto (urut sejajar dgn portofolioUrls)
+      // Keahlian terisi (nama wajib). Dikirim utuh (nama+deskripsi) supaya AI bisa
+      // meringkas deskripsi yang ditulis bebas-panjang oleh user jadi padat.
+      const keahlianTerisi = formData.keahlianList.filter((k) => k.nama.trim());
       const apiBody = formMode === "portfolio"
-        ? { ...formData, proyekPortofolio: proyekWithFoto.map((e) => e.p), layananSpesifik: formData.keahlianList.map((k) => k.nama).filter(Boolean) }
+        ? { ...formData, proyekPortofolio: proyekWithFoto.map((e) => e.p), layananSpesifik: keahlianTerisi.map((k) => k.nama), keahlian: keahlianTerisi }
         : formData;
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -926,7 +933,13 @@ function BuatContent() {
         },
 
         paketHarga: formData.paketHarga,
-        keahlian: formData.keahlianList.filter((k) => k.nama.trim()),
+        // Deskripsi keahlian sudah DIRINGKAS AI (urut & jumlah sejajar keahlianTerisi yg
+        // dikirim ke API). nama apa adanya dari user. Fallback ke deskripsi mentah kalau
+        // AI tak mengembalikan keahlian.
+        keahlian: keahlianTerisi.map((k, i) => ({
+          nama: k.nama,
+          deskripsi: (Array.isArray(aiData.keahlian) ? aiData.keahlian[i]?.deskripsi?.trim() : "") || k.deskripsi,
+        })),
         pengalaman: formData.pengalaman.filter((p) => p.judul.trim()),
         logo: logoUrl,
         portofolio: portofolioUrls,
@@ -937,7 +950,7 @@ function BuatContent() {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 14);
 
-      const templateId = safeStorage.get('selected_template') || 'jasa-001';
+      const templateId = safeStorage.get('selected_template') || 'jasa-002';
 
       let dbData, dbError;
 
@@ -1005,8 +1018,8 @@ function BuatContent() {
       sosmed: { instagram: formData.instagram, tiktok: formData.tiktok, twitter: formData.x_twitter },
       warna: { primary: formData.primaryColor, tema: (formData.tema || "light") as "dark" | "light" },
       paketHarga: formData.paketHarga,
-      keahlian: formData.keahlianList.filter((k) => k.nama.trim()),
-      pengalaman: formData.pengalaman.filter((p) => p.judul.trim()),
+      keahlian: (formData.keahlianList || []).filter((k) => k.nama.trim()),
+      pengalaman: (formData.pengalaman || []).filter((p) => p.judul.trim()),
       logo: formData.logo,
       portofolio: formData.portofolio,
     };
@@ -1031,16 +1044,10 @@ function BuatContent() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Anda harus login.");
 
-      // Upload function — uses File objects directly for reliable upload
+      // Upload via helper dgn token user eksplisit (hindari regresi propagasi token SDK).
       const uploadFile = async (file: File, folder: string) => {
         try {
-          const fileExt = file.name.split('.').pop() || 'png';
-          const fileName = `${user.id}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-          const filePath = `${folder}/${fileName}`;
-          const { error: uploadError } = await supabase.storage.from('website-assets').upload(filePath, file, { upsert: true });
-          if (uploadError) throw uploadError;
-          const { data: publicUrlData } = supabase.storage.from('website-assets').getPublicUrl(filePath);
-          return publicUrlData.publicUrl;
+          return await uploadAsset(supabase, file, folder, user.id);
         } catch (e: any) {
           console.error("Upload error:", e);
           throw new Error(`Gagal upload gambar (${folder}). Detail: ${e.message || 'Kesalahan tidak diketahui'}.`);
@@ -1111,7 +1118,13 @@ function BuatContent() {
         sosmed: { instagram: formData.instagram, tiktok: formData.tiktok, twitter: formData.x_twitter },
         warna: { primary: formData.primaryColor, tema: (formData.tema || "light") as "dark" | "light" },
         paketHarga: formData.paketHarga,
-        keahlian: formData.keahlianList.filter((k) => k.nama.trim()),
+        // Simpan tanpa regenerate AI: pertahankan deskripsi keahlian yang sudah diringkas
+        // AI di generate sebelumnya (cocok via nama). Keahlian baru/diedit pakai teks
+        // wizard; layout tetap aman karena kartu keahlian dibatasi 3 baris (CSS clamp).
+        keahlian: formData.keahlianList.filter((k) => k.nama.trim()).map((k) => ({
+          nama: k.nama,
+          deskripsi: templateData?.keahlian?.find((p) => p.nama === k.nama)?.deskripsi || k.deskripsi,
+        })),
         pengalaman: formData.pengalaman.filter((p) => p.judul.trim()),
         logo: logoUrl,
         portofolio: portofolioUrls,
@@ -1329,14 +1342,14 @@ function BuatContent() {
                       <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Instagram</label>
                       <div className="flex items-center bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-zinc-600 focus-within:border-zinc-600 transition-all duration-200">
                         <span className="px-2.5 py-2 text-zinc-500 text-[12px] font-medium flex-shrink-0 border-r border-zinc-800 select-none">@</span>
-                        <input id="input-ig" type="text" value={formData.instagram} onChange={(e) => updateField("instagram", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
+                        <input id="input-ig" type="text" value={formData.instagram} onChange={(e) => updateField("instagram", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[16px] sm:text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
                       </div>
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">TikTok</label>
                       <div className="flex items-center bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-zinc-600 focus-within:border-zinc-600 transition-all duration-200">
                         <span className="px-2.5 py-2 text-zinc-500 text-[12px] font-medium flex-shrink-0 border-r border-zinc-800 select-none">@</span>
-                        <input id="input-tiktok" type="text" value={formData.tiktok} onChange={(e) => updateField("tiktok", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
+                        <input id="input-tiktok" type="text" value={formData.tiktok} onChange={(e) => updateField("tiktok", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[16px] sm:text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
                       </div>
                     </div>
                   </div>
@@ -1344,7 +1357,7 @@ function BuatContent() {
                     <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">X (Twitter)</label>
                     <div className="flex items-center bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-zinc-600 focus-within:border-zinc-600 transition-all duration-200">
                       <span className="px-2.5 py-2 text-zinc-500 text-[12px] font-medium flex-shrink-0 border-r border-zinc-800 select-none">@</span>
-                      <input id="input-twitter" type="text" value={formData.x_twitter} onChange={(e) => updateField("x_twitter", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
+                      <input id="input-twitter" type="text" value={formData.x_twitter} onChange={(e) => updateField("x_twitter", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[16px] sm:text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
                     </div>
                   </div>
                 </div>
@@ -1422,7 +1435,7 @@ function BuatContent() {
                       <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">Instagram</label>
                       <div className="flex items-center bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-zinc-600 focus-within:border-zinc-600 transition-all duration-200">
                         <span className="px-2.5 py-2 text-zinc-500 text-[12px] font-medium flex-shrink-0 border-r border-zinc-800 select-none">@</span>
-                        <input type="text" value={formData.instagram} onChange={(e) => updateField("instagram", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
+                        <input type="text" value={formData.instagram} onChange={(e) => updateField("instagram", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[16px] sm:text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
                       </div>
                     </div>
                     <div className="space-y-1">
@@ -1434,7 +1447,7 @@ function BuatContent() {
                     <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">X (Twitter)</label>
                     <div className="flex items-center bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-zinc-600 focus-within:border-zinc-600 transition-all duration-200">
                       <span className="px-2.5 py-2 text-zinc-500 text-[12px] font-medium flex-shrink-0 border-r border-zinc-800 select-none">@</span>
-                      <input type="text" value={formData.x_twitter} onChange={(e) => updateField("x_twitter", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
+                      <input type="text" value={formData.x_twitter} onChange={(e) => updateField("x_twitter", e.target.value)} placeholder="username" className="flex-1 bg-transparent px-3 py-2 text-[16px] sm:text-[12px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none" />
                     </div>
                   </div>
                 </div>
@@ -1559,7 +1572,7 @@ function BuatContent() {
                       <Plus className="w-3 h-3" /> Tambah Keahlian
                     </button>
                   </div>
-                  <p className="text-zinc-600 text-[11px] -mt-1">Nama keahlian + deskripsi singkat (5-10 kata) apa yang sudah kamu kerjakan dengan keahlian itu.</p>
+                  <p className="text-zinc-600 text-[11px] -mt-1">Nama keahlian + ceritakan bebas (sepanjang apapun) apa yang sudah kamu kerjakan dengan keahlian itu. AI akan meringkasnya jadi padat dan rapi otomatis.</p>
                   {formData.keahlianList.length === 0 && (
                     <div className="text-center py-6 border border-dashed border-zinc-800 rounded-xl text-zinc-600 text-[12px]">
                       Belum ada keahlian. Klik Tambah Keahlian.
@@ -1573,7 +1586,8 @@ function BuatContent() {
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <input type="text" maxLength={90} value={k.deskripsi} onChange={(e) => updateKeahlian(idx, "deskripsi", e.target.value)} placeholder="deskripsi singkat 5-10 kata (tampil di desktop)" className={`${inputClass} !py-2 !text-[12px]`} />
+                      {/* Tanpa batas panjang: user bebas menulis sepanjang apapun, AI yang meringkas jadi padat. */}
+                      <textarea rows={2} value={k.deskripsi} onChange={(e) => updateKeahlian(idx, "deskripsi", e.target.value)} placeholder="ceritakan bebas, AI akan meringkas jadi padat" className={`${inputClass} !py-2 !text-[12px] resize-y min-h-[40px]`} />
                     </div>
                   ))}
                 </div>
@@ -1601,7 +1615,10 @@ function BuatContent() {
                             <option value="kompetisi">Kompetisi</option>
                             <option value="organisasi">Organisasi</option>
                           </select>
-                          <input type="text" maxLength={24} value={p.tahun} onChange={(e) => updatePengalaman(idx, "tahun", e.target.value)} placeholder="contoh: 2024" className={`${inputClass} !py-2 !text-[12px] !w-28 flex-shrink-0`} />
+                          <select value={p.tahun} onChange={(e) => updatePengalaman(idx, "tahun", e.target.value)} className={`${inputClass} !py-2 !text-[12px] !w-28 flex-shrink-0`}>
+                            <option value="">Tahun</option>
+                            {TAHUN_OPTIONS.map((y) => <option key={y} value={y}>{y}</option>)}
+                          </select>
                           <button type="button" onClick={() => removePengalaman(idx)} className="p-1.5 rounded-md hover:bg-red-900/30 text-zinc-600 hover:text-red-400 transition-colors cursor-pointer flex-shrink-0">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1696,6 +1713,8 @@ function BuatContent() {
                       </div>
                     </div>
                   ))}
+                  {/* Anchor scroll: addProyek auto-scroll ke sini supaya slot baru terlihat. */}
+                  <div ref={proyekEndRef} />
                 </div>
               </>
             )}
@@ -1703,7 +1722,9 @@ function BuatContent() {
             {/* ═══ STEP 3 ═══ */}
             {step === 2 && (
               <>
-                {/* Theme */}
+                {/* Theme — Nuansa (Dark/Light) hanya untuk template jasa. Template personal
+                    (mode portfolio) punya palet sendiri, jadi pilihan ini disembunyikan. */}
+                {formMode !== "portfolio" && (
                 <div className="space-y-2.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Palette className="w-3 h-3" /> Nuansa Desain</label>
                   <div className="grid grid-cols-2 gap-3">
@@ -1726,6 +1747,7 @@ function BuatContent() {
                     })}
                   </div>
                 </div>
+                )}
 
                 {/* Color Picker */}
                 <div className="space-y-2.5">
@@ -1787,9 +1809,32 @@ function BuatContent() {
                 {formMode === "portfolio" ? (
                 <div className="space-y-2.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Camera className="w-3 h-3" /> Foto Pribadi</label>
-                  <p className="text-zinc-600 text-[10px] -mt-1">Tanpa latar belakang (PNG transparan paling bagus).</p>
+                  <p className="text-zinc-600 text-[10px] -mt-1">Foto Hero sebaiknya tanpa latar belakang (PNG transparan). Foto lain bebas (akan dipotong otomatis).</p>
                   <div className="grid grid-cols-2 gap-2.5">
-                    {[{ idx: 0, title: "Foto Hero", hint: "tampil di hero", tip: "Foto utama paling atas website, gambar besar pertama yang dilihat pengunjung." }, { idx: 1, title: "Foto About Me", hint: "section tentang", tip: "Foto di bagian 'Tentang Saya', biasanya foto diri yang lebih personal atau formal." }].map(({ idx, title, hint, tip }) => {
+                    {/* Slot foto per template:
+                        - personal-002 (brutalist-bento): Hero + 3 foto galeri "About Me" (fotoBisnis[1..3]).
+                        - personal-003 (neon-grid): Hero + 4 foto strip section Pengalaman (fotoBisnis[1..4]).
+                        - personal lain: Hero + 1 About Me. */}
+                    {(selectedTemplateId === "personal-002"
+                      ? [
+                          { idx: 0, title: "Foto Hero", hint: "tampil di hero", tip: "Foto utama paling atas website, gambar besar pertama yang dilihat pengunjung." },
+                          { idx: 1, title: `Foto "About Me" 1`, hint: "section about me", tip: "Foto pertama di galeri section 'About Me'." },
+                          { idx: 2, title: `Foto "About Me" 2`, hint: "section about me", tip: "Foto kedua di galeri section 'About Me'." },
+                          { idx: 3, title: `Foto "About Me" 3`, hint: "section about me", tip: "Foto ketiga di galeri section 'About Me'." },
+                        ]
+                      : selectedTemplateId === "personal-003"
+                      ? [
+                          { idx: 0, title: "Foto Hero", hint: "tampil di hero", tip: "Foto utama paling atas website, gambar besar pertama yang dilihat pengunjung." },
+                          { idx: 1, title: "Foto Galeri 1", hint: "strip pengalaman", tip: "Foto pertama di strip galeri bawah section 'Pengalaman'." },
+                          { idx: 2, title: "Foto Galeri 2", hint: "strip pengalaman", tip: "Foto kedua di strip galeri bawah section 'Pengalaman'." },
+                          { idx: 3, title: "Foto Galeri 3", hint: "strip pengalaman", tip: "Foto ketiga di strip galeri bawah section 'Pengalaman'." },
+                          { idx: 4, title: "Foto Galeri 4", hint: "opsional", tip: "Foto keempat (opsional). Kalau dikosongkan, strip galeri tampil 3 foto saja." },
+                        ]
+                      : [
+                          { idx: 0, title: "Foto Hero", hint: "tampil di hero", tip: "Foto utama paling atas website, gambar besar pertama yang dilihat pengunjung." },
+                          { idx: 1, title: "Foto About Me", hint: "section tentang", tip: "Foto di bagian 'Tentang Saya', biasanya foto diri yang lebih personal atau formal." },
+                        ]
+                    ).map(({ idx, title, hint, tip }) => {
                       const url = formData.fotoBisnis[idx];
                       return (
                         <div key={idx} className="space-y-1.5">
@@ -1995,7 +2040,7 @@ function BuatContent() {
                     </div>
                   ) : <EmptyState />}
                 </div>
-                {isBuilding && <BuildingOverlay onCancel={() => { abortControllerRef.current?.abort(); setIsBuilding(false); setIsLoading(false); }} />}
+                {isBuilding && <BuildingOverlay mode={formMode} onCancel={() => { abortControllerRef.current?.abort(); setIsBuilding(false); setIsLoading(false); }} />}
               </div>
             </div>
             <div className={`hidden md:block absolute inset-0 transition-all duration-500 ease-in-out ${viewMode === "mobile" ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"}`}>
@@ -2008,7 +2053,7 @@ function BuatContent() {
                   </div>
                   <div className="h-full w-full">{templateData ? <IframePreview dark={templateData?.warna?.tema === "dark"}><TemplateComponent {...templateData} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} /></IframePreview> : <EmptyState />}</div>
                   <div className={`flex-shrink-0 flex justify-center py-2 ${templateData?.warna?.tema === "dark" ? "bg-zinc-950" : "bg-white"}`}><div className={`w-32 h-1 rounded-full ${templateData?.warna?.tema === "dark" ? "bg-zinc-700" : "bg-zinc-300"}`} /></div>
-                  {isBuilding && <BuildingOverlay onCancel={() => { abortControllerRef.current?.abort(); setIsBuilding(false); setIsLoading(false); }} />}
+                  {isBuilding && <BuildingOverlay mode={formMode} onCancel={() => { abortControllerRef.current?.abort(); setIsBuilding(false); setIsLoading(false); }} />}
                 </div>
               </div>
             </div>
@@ -2017,7 +2062,7 @@ function BuatContent() {
               <div className={`flex-1 ${templateData?.warna?.tema === "dark" ? "bg-zinc-950" : "bg-white"}`}>
                 {templateData ? <IframePreview dark={templateData?.warna?.tema === "dark"}><TemplateComponent {...templateData} isEditable={true} isEditMode={isEditMode} onContentUpdate={(c) => setTemplateData(prev => prev ? { ...prev, ...c } : prev)} websiteId={generatedWebsiteId || undefined} /></IframePreview> : <EmptyState />}
               </div>
-              {isBuilding && <BuildingOverlay onCancel={() => { abortControllerRef.current?.abort(); setIsBuilding(false); setIsLoading(false); }} />}
+              {isBuilding && <BuildingOverlay mode={formMode} onCancel={() => { abortControllerRef.current?.abort(); setIsBuilding(false); setIsLoading(false); }} />}
             </div>
           </div>
         </main>
@@ -2326,16 +2371,23 @@ function EmptyState() {
   );
 }
 
-function BuildingOverlay({ onCancel }: { onCancel: () => void }) {
+function BuildingOverlay({ onCancel, mode = "jasa" }: { onCancel: () => void; mode?: "jasa" | "portfolio" }) {
   const [msgIndex, setMsgIndex] = useState(0);
   const [seconds, setSeconds] = useState(0);
 
-  const loadingMessages = [
-    "Memahami bisnis kamu...",
-    "Menyusun copywriting...",
-    "Merancang struktur website...",
-    "Hampir selesai..."
-  ];
+  const loadingMessages = mode === "portfolio"
+    ? [
+        "Memahami portofoliomu...",
+        "Menyusun narasi personal branding...",
+        "Merancang struktur website...",
+        "Hampir selesai..."
+      ]
+    : [
+        "Memahami bisnis kamu...",
+        "Menyusun copywriting...",
+        "Merancang struktur website...",
+        "Hampir selesai..."
+      ];
 
   useEffect(() => {
     const msgInterval = setInterval(() => {

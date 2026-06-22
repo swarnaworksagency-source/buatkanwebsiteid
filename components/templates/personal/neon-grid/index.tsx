@@ -1,6 +1,8 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import type { TemplateData } from "@/types";
+import { readableOn, withAlpha } from "@/lib/color";
 import { NEON } from "./types";
 import Hero from "./sections/Hero";
 import HowItWorks from "./sections/HowItWorks";
@@ -88,9 +90,20 @@ export default function NeonGrid({
         name, waLink, isEditMode, edit, imgPos, setImgPos,
     };
 
+    // Warna aksen dari "Preferensi Warna". Di-set sebagai CSS var di root → semua NEON.lime,
+    // NEON.onLime, glow, dll otomatis ikut warna user. Fallback ke lime default.
+    const accent = (warna?.primary || "").trim() || "#a3e635";
+    const accentVars = {
+        "--ng-accent": accent,
+        "--ng-accent-dim": withAlpha(accent, 0.14),
+        "--ng-accent-soft": withAlpha(accent, 0.30),
+        "--ng-on-accent": readableOn(accent, "#0b1116"),
+    } as CSSProperties;
+
     return (
         <div
             style={{
+                ...accentVars,
                 fontFamily: NEON.font,
                 background: NEON.bg,
                 color: NEON.ink,
