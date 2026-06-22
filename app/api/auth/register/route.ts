@@ -56,10 +56,15 @@ export async function POST(request: Request) {
 
   // 4. Daftar (server-side; tetap memicu email konfirmasi seperti sebelumnya)
   const supabase = await createServerSupabaseClient();
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.buatkanweb.id';
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: name } },
+    options: {
+      data: { full_name: name },
+      // Link verifikasi email harus arah domain produksi, bukan Site URL default (localhost).
+      emailRedirectTo: `${siteUrl}/auth/callback`,
+    },
   });
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
