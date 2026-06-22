@@ -45,7 +45,6 @@ next-env.d.ts
 /Markdown/
 
 # local dummy/preview assets (personal, not for production)
-/public/FotoSoni.webp
 /public/image.png
 
 # Agent config

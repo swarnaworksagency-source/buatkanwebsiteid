@@ -97,8 +97,8 @@ export const TEMPLATES_BY_KATEGORI: Record<string, TemplateItem[]> = {
     jasa: [
         // Sementara hanya jasa-002 (Klasik) yang bisa diakses; sisanya tetap tampil sebagai
         // kartu "coming soon" (belum bisa dipilih) karena masih perlu polish.
-        { id: 'jasa-001', nama: 'Minimalist', kategori: 'jasa', status: 'coming_soon' },
         { id: 'jasa-002', nama: 'Klasik', kategori: 'jasa', status: 'available', badge: 'Populer' },
+        { id: 'jasa-001', nama: 'Minimalist', kategori: 'jasa', status: 'coming_soon' },
         { id: 'jasa-003', nama: 'Hangat', kategori: 'jasa', status: 'coming_soon' },
         { id: 'jasa-004', nama: 'Tegas', kategori: 'jasa', status: 'coming_soon' },
         { id: 'jasa-005', nama: 'Elegant', kategori: 'jasa', status: 'coming_soon' },
