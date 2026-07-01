@@ -512,15 +512,15 @@ function BuatContent() {
         if (contentError) throw contentError;
       }
 
-      const { error } = await supabase
-        .from('websites')
-        .update({ 
-          subdomain,
-          status: 'active'
-        })
-        .eq('id', websiteId);
-
-      if (error) throw error;
+      // Aktivasi authoritative di server (verifikasi paid + validasi subdomain).
+      // Jangan set status 'active'/subdomain dari client (diblokir trigger DB guard).
+      const res = await fetch('/api/website/deploy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ websiteId, subdomain }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal deploy. Coba lagi.');
       setDeployStatus('success');
     } catch (err: any) {
       setDeployStatus('error');
@@ -531,19 +531,12 @@ function BuatContent() {
   const startPayment = async (subdomain: string, websiteId: string) => {
     setPaymentLoading(true);
     try {
-      // PENTING: Simpan subdomain ke database SEBELUM redirect ke Duitku
-      const supabase = createClient();
-      const { error: subdomainError } = await supabase
-        .from('websites')
-        .update({ subdomain })
-        .eq('id', websiteId);
-      
-      if (subdomainError) throw new Error('Gagal menyimpan subdomain: ' + subdomainError.message);
-
+      // Subdomain disimpan & divalidasi server di /api/payment/create (service role).
+      // Client TIDAK boleh menulis kolom subdomain (diblokir trigger DB guard).
       const res = await fetch('/api/payment/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ websiteId })
+        body: JSON.stringify({ websiteId, subdomain })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create payment');
