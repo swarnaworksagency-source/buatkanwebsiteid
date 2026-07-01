@@ -954,6 +954,10 @@ function BuatContent() {
 
       let dbData, dbError;
 
+      // Kolom sensitif (status/subdomain/expires_at) HANYA boleh diubah server
+      // (trigger DB guard_websites_protected_cols, before update). Karena itu:
+      // - insert baru: sertakan status/expires_at (trigger tak jalan saat insert).
+      // - update (edit/regenerate): JANGAN kirim kolom sensitif → hindari 403.
       const payload = {
         user_id: user.id,
         nama_usaha: projectName || formData.namaBisnis || "Website Baru",
@@ -963,15 +967,17 @@ function BuatContent() {
         foto_urls: portofolioUrls,
         generated_content: { ...finalData, __formData: { ...formData, logo: logoUrl, portofolio: portofolioUrls, fotoBisnis: fotoBisnisUrls } },
         template_id: templateId,
-        status: 'preview',
-        expires_at: expiresAt.toISOString()
       };
 
       if (idParam) {
         const { data, error } = await supabase.from('websites').update(payload).eq('id', idParam).select('id').single();
         dbData = data; dbError = error;
       } else {
-        const { data, error } = await supabase.from('websites').insert(payload).select('id').single();
+        const { data, error } = await supabase.from('websites').insert({
+          ...payload,
+          status: 'preview',
+          expires_at: expiresAt.toISOString(),
+        }).select('id').single();
         dbData = data; dbError = error;
       }
 
