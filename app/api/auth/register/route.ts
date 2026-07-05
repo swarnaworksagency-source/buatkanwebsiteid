@@ -57,7 +57,7 @@ export async function POST(request: Request) {
   // 4. Daftar (server-side; tetap memicu email konfirmasi seperti sebelumnya)
   const supabase = await createServerSupabaseClient();
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.buatkanweb.id';
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -68,6 +68,16 @@ export async function POST(request: Request) {
   });
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  // Supabase mengembalikan "sukses palsu" (anti email-enumeration) kalau email
+  // sudah terdaftar & terkonfirmasi: user dikembalikan dengan identities kosong,
+  // dan email konfirmasi TIDAK dikirim. Deteksi kasus ini dan beri pesan jelas.
+  if (data.user && (data.user.identities?.length ?? 0) === 0) {
+    return NextResponse.json(
+      { error: 'Email sudah terdaftar. Silakan login (atau gunakan "Lupa password" / login Google jika akunmu dibuat lewat Google).' },
+      { status: 400 }
+    );
   }
 
   // 5. Catat percobaan (untuk rate limit). Best-effort, jangan gagalkan registrasi.

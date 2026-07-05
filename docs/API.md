@@ -94,7 +94,10 @@ Semua dilindungi IP ban + rate limit + strike auto-ban.
 - Verifikasi OTP recovery → set password baru → sign out. OTP salah = strike. → **200** `{ success: true }` · `400`.
 
 ### `GET /api/auth/callback`
-OAuth callback Supabase (Google). Redirect, bukan JSON.
+OAuth callback Supabase (Google), PKCE code exchange. Redirect, bukan JSON.
+
+### `GET /auth/confirm`
+Verifikasi link email (konfirmasi signup) lewat `token_hash` + `verifyOtp` — bukan PKCE, jadi tidak butuh cookie `code_verifier` dari browser yang sama. Perlu template email "Confirm signup" di Supabase diarahkan ke `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup&next=/dashboard`. Redirect, bukan JSON.
 
 ---
 
