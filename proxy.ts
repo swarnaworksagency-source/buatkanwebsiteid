@@ -30,8 +30,13 @@ export async function proxy(request: NextRequest) {
                 return NextResponse.next()
             }
 
-            // Rewrite to internal /s/[subdomain] route
-            return NextResponse.rewrite(new URL(`/s/${subdomain}${request.nextUrl.pathname}`, request.url))
+            // Rewrite to internal /s/[subdomain] route.
+            // Pakai nextUrl.clone() (bukan new URL(request.url)) supaya rewrite tetap
+            // internal saat self-host di balik reverse proxy — URL absolut dari
+            // request.url membuat Next memperlakukannya sebagai proxy eksternal.
+            const rewriteUrl = request.nextUrl.clone()
+            rewriteUrl.pathname = `/s/${subdomain}${request.nextUrl.pathname}`
+            return NextResponse.rewrite(rewriteUrl)
         }
     }
 
