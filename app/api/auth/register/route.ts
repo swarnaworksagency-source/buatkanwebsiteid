@@ -62,8 +62,10 @@ export async function POST(request: Request) {
     password,
     options: {
       data: { full_name: name },
-      // Link verifikasi email harus arah domain produksi, bukan Site URL default (localhost).
-      emailRedirectTo: `${siteUrl}/auth/callback`,
+      // Base URL link verifikasi email — env-aware: dev -> localhost, prod -> domain produksi.
+      // Template email GoTrue memakai {{ .RedirectTo }}?token_hash=...&type=signup,
+      // jadi arahkan ke /auth/confirm (verifikasi token_hash), bukan /auth/callback (PKCE).
+      emailRedirectTo: `${siteUrl}/auth/confirm`,
     },
   });
   if (error) {
