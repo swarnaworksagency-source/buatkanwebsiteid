@@ -11,7 +11,13 @@ import { getClientIp, getActiveBan } from '@/lib/ip'
 // Safe Links), cookie itu tidak ada/sudah tidak cocok dan exchangeCodeForSession gagal.
 // verifyOtp(token_hash) tidak punya ketergantungan itu.
 export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url)
+    const { searchParams } = new URL(request.url)
+    // Origin dari header forwarded (Caddy/Vercel), bukan request.url —
+    // saat self-host, request.url berbasis alamat bind server (localhost:3000),
+    // sehingga redirect hasil verifikasi mengarah ke localhost.
+    const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? 'www.buatkanweb.id'
+    const proto = request.headers.get('x-forwarded-proto') ?? 'https'
+    const origin = `${proto}://${host}`
     const token_hash = searchParams.get('token_hash')
     const type = searchParams.get('type') as EmailOtpType | null
 

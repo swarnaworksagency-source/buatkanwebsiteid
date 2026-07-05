@@ -4,7 +4,13 @@ import { cookies } from 'next/headers'
 import { getClientIp, getActiveBan } from '@/lib/ip'
 
 export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url)
+    const { searchParams } = new URL(request.url)
+    // Origin dari header forwarded (Caddy/Vercel), bukan request.url —
+    // saat self-host, request.url berbasis alamat bind server (localhost:3000),
+    // sehingga redirect hasil login mengarah ke localhost.
+    const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? 'www.buatkanweb.id'
+    const proto = request.headers.get('x-forwarded-proto') ?? 'https'
+    const origin = `${proto}://${host}`
     const code = searchParams.get('code')
 
     // next: hanya path relatif (cegah open redirect). Default /dashboard.
