@@ -152,7 +152,6 @@ export default function PricingSection() {
                 <span className="text-4xl font-extrabold text-white tracking-tight">
                   {isEarlyAdopter ? "Rp99.000" : "Rp199.000"}
                 </span>
-                <span className="text-zinc-400 text-[13px] font-medium whitespace-nowrap">/bulan pertama</span>
               </div>
               <p className="text-zinc-400 text-[12px] mt-1.5 whitespace-nowrap">
                 Perpanjangan <span className="text-white font-semibold">50k/bulan</span>

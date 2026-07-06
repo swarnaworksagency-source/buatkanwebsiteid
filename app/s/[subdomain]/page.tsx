@@ -38,6 +38,31 @@ export default async function SubdomainPage({ params }: SubdomainPageProps) {
 
     if (!website) notFound()
 
+    // Masa aktif habis → jangan render website; tampilkan halaman nonaktif.
+    // (Status diturunkan 'active'→'expired' oleh cron /api/cron/expiry.)
+    if (website.status === 'expired') {
+        return (
+            <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', padding: '24px', fontFamily: 'system-ui, sans-serif' }}>
+                <div style={{ maxWidth: '420px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>😴</div>
+                    <h1 style={{ color: '#fff', fontSize: '22px', fontWeight: 800, margin: '0 0 10px' }}>
+                        Website ini sedang tidak aktif
+                    </h1>
+                    <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: 1.7, margin: '0 0 24px' }}>
+                        Masa aktif <strong style={{ color: '#e2e8f0' }}>{subdomain}.{process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'buatkanweb.id'}</strong> telah
+                        berakhir. Pemilik website bisa mengaktifkannya kembali lewat dashboard.
+                    </p>
+                    <a
+                        href="https://www.buatkanweb.id/dashboard"
+                        style={{ display: 'inline-block', background: '#1E466B', color: '#fff', fontSize: '14px', fontWeight: 700, textDecoration: 'none', padding: '12px 28px', borderRadius: '12px' }}
+                    >
+                        Saya pemiliknya — perpanjang sekarang
+                    </a>
+                </div>
+            </main>
+        )
+    }
+
     // Pilih komponen template sesuai template_id website (jasa / personal / dst).
     // Jangan hardcode TemplateSatu — website portofolio harus render template-nya sendiri.
     const content = website.generated_content || {}
