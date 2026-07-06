@@ -101,9 +101,9 @@ export async function POST(request: Request) {
     const payload = {
       paymentAmount: harga,
       merchantOrderId: orderId,
-      productDetails: isEarlyAdopter 
-        ? 'Subdomain BuatkanWeb.id - Early Adopter (1 Tahun)'
-        : 'Subdomain BuatkanWeb.id (1 Tahun)',
+      productDetails: isEarlyAdopter
+        ? 'Aktivasi Subdomain BuatkanWeb.id - Early Adopter (Bulan Pertama)'
+        : 'Aktivasi Subdomain BuatkanWeb.id (Bulan Pertama)',
       email: user.email,
       customerVaName: user.user_metadata?.full_name || 'User',
       callbackUrl: `${appUrl}/api/payment/webhook`,
@@ -137,7 +137,7 @@ export async function POST(request: Request) {
         user_id: user.id,
         website_id: websiteId,
         order_id: orderId,
-        paket: isEarlyAdopter ? 'Subdomain (Early Adopter)' : 'Subdomain 1 Tahun',
+        paket: isEarlyAdopter ? 'Aktivasi (Early Adopter)' : 'Aktivasi Subdomain',
         harga: harga,
         status: 'pending',
         midtrans_status: 'pending', // tetap pakai kolom ini atau kita asumsikan sebagai duitku_status sementara

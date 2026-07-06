@@ -47,15 +47,21 @@ export async function GET() {
     if (row.status in websites) websites[row.status as keyof typeof websites] += 1;
   }
 
+  // Akumulasi per website: total semua pembayaran lunas (aktivasi + perpanjangan),
+  // jumlah transaksi, dan paid_at paling awal (= tanggal pertama kali aktif).
   let paidCount = 0;
   let revenue = 0;
-  const paidByWebsite = new Map<string, { harga: number; paidAt: string | null }>();
+  const paidByWebsite = new Map<string, { total: number; count: number; firstPaidAt: string | null }>();
   for (const p of (paymentsRes.data ?? []) as PaymentRow[]) {
     if (p.status !== 'paid') continue;
     paidCount += 1;
     revenue += Number(p.harga) || 0;
     if (p.website_id) {
-      paidByWebsite.set(p.website_id, { harga: Number(p.harga) || 0, paidAt: p.paid_at });
+      const cur = paidByWebsite.get(p.website_id) ?? { total: 0, count: 0, firstPaidAt: null };
+      cur.total += Number(p.harga) || 0;
+      cur.count += 1;
+      if (p.paid_at && (!cur.firstPaidAt || p.paid_at < cur.firstPaidAt)) cur.firstPaidAt = p.paid_at;
+      paidByWebsite.set(p.website_id, cur);
     }
   }
 
@@ -83,8 +89,9 @@ export async function GET() {
         status: s.status,
         userEmail: user?.email ?? '',
         userName: user?.name ?? '',
-        harga: paid?.harga ?? null,
-        activeAt: paid?.paidAt ?? null,
+        harga: paid ? paid.total : null,
+        payCount: paid?.count ?? 0,
+        activeAt: paid?.firstPaidAt ?? null,
         createdAt: s.created_at,
         expiresAt: s.expires_at,
       };

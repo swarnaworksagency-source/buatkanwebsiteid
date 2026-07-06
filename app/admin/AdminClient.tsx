@@ -27,6 +27,7 @@ interface Site {
     userEmail: string
     userName: string
     harga: number | null
+    payCount: number
     activeAt: string | null
     createdAt: string | null
     expiresAt: string | null
@@ -365,7 +366,7 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
                                         <tr>
                                             <th className="px-4 py-3 font-medium whitespace-nowrap">Domain</th>
                                             <th className="px-4 py-3 font-medium whitespace-nowrap">User</th>
-                                            <th className="px-4 py-3 font-medium whitespace-nowrap">Bayar</th>
+                                            <th className="px-4 py-3 font-medium whitespace-nowrap">Total Bayar</th>
                                             <th className="px-4 py-3 font-medium whitespace-nowrap">Aktif sejak</th>
                                             <th className="px-4 py-3 font-medium whitespace-nowrap">Kedaluwarsa</th>
                                             <th className="px-4 py-3 font-medium text-right whitespace-nowrap">Aksi</th>
@@ -410,7 +411,12 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
                                                 </td>
                                                 <td className="px-4 py-3 whitespace-nowrap">
                                                     {s.harga != null ? (
-                                                        <span className="text-emerald-300">{fmtRupiah(s.harga)}</span>
+                                                        <span className="text-emerald-300">
+                                                            {fmtRupiah(s.harga)}
+                                                            {s.payCount > 1 && (
+                                                                <span className="text-zinc-500 text-xs"> · {s.payCount}x</span>
+                                                            )}
+                                                        </span>
                                                     ) : s.status === 'active' ? (
                                                         <span className="rounded bg-amber-900/40 text-amber-300 text-[11px] px-1.5 py-0.5">
                                                             tanpa pembayaran

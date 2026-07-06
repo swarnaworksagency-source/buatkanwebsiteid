@@ -1251,7 +1251,7 @@ export default function DashboardClient({
                                 </div>
                                 <div className="flex justify-between items-center pb-4 border-b border-zinc-800">
                                     <span className="text-zinc-400 text-[13px]">Paket</span>
-                                    <span className="text-white font-medium text-[14px]">Subdomain 1 Tahun</span>
+                                    <span className="text-white font-medium text-[14px]">Aktivasi (bulan pertama)</span>
                                 </div>
                                 
                                 <div className="pt-2">

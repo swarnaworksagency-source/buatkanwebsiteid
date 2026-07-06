@@ -117,9 +117,9 @@ export async function POST(request: Request) {
           expiresAt = currentExpiry > now ? new Date(currentExpiry) : now;
           expiresAt.setMonth(expiresAt.getMonth() + Number(payment.months));
         } else {
-          // Aktivasi pertama: 1 tahun dari sekarang (langganan subdomain 1 tahun)
+          // Aktivasi pertama: masa aktif 1 bulan. Setelah itu user perpanjang Rp50rb/bulan.
           expiresAt = new Date();
-          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+          expiresAt.setMonth(expiresAt.getMonth() + 1);
         }
 
         // Update website status to active + set expires_at
