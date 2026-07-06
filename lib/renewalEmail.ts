@@ -6,49 +6,39 @@ export type ReminderKind = 'h7' | 'h3' | 'h1' | 'expired';
 
 interface ReminderCopy {
   subject: (domain: string) => string;
-  badge: string;
   headline: string;
   sub: (domain: string, expiresStr: string) => string;
   cta: string;
-  accent: string; // warna aksen header & badge
 }
 
 const COPY: Record<ReminderKind, ReminderCopy> = {
   h7: {
     subject: (d) => `⏳ 7 hari lagi — jangan biarkan ${d} tidur`,
-    badge: 'SISA 7 HARI',
     headline: 'Masa aktif website kamu hampir habis',
     sub: (d, e) =>
-      `Website <strong>${d}</strong> aktif sampai <strong>${e}</strong>. Perpanjang sekarang biar pelanggan tetap bisa menemukanmu — tanpa jeda, tanpa ribet.`,
+      `Website <strong>${d}</strong> aktif sampai <strong>${e}</strong>.`,
     cta: 'Perpanjang Sekarang',
-    accent: '#67BAF4',
   },
   h3: {
     subject: (d) => `⚠️ 3 hari lagi masa aktif ${d} habis`,
-    badge: 'SISA 3 HARI',
     headline: 'Waktunya makin mepet nih…',
     sub: (d, e) =>
       `Tinggal <strong>3 hari</strong> sebelum <strong>${d}</strong> nonaktif (${e}). Kalau website mati, pelanggan yang cari kamu di Google bakal nyasar ke kompetitor. Yuk amankan sekarang.`,
     cta: 'Amankan Website Saya',
-    accent: '#F59E0B',
   },
   h1: {
     subject: (d) => `🚨 BESOK ${d} nonaktif — perpanjang sekarang`,
-    badge: 'HARI TERAKHIR',
     headline: 'Besok website kamu offline!',
     sub: (d, e) =>
       `Ini pengingat terakhir — <strong>${d}</strong> akan nonaktif <strong>${e}</strong>. Satu menit sekarang menyelamatkan semua calon pelanggan yang datang besok.`,
     cta: 'Perpanjang Detik Ini',
-    accent: '#EF4444',
   },
   expired: {
     subject: (d) => `😢 ${d} sudah nonaktif — aktifkan lagi dalam 1 menit`,
-    badge: 'NONAKTIF',
     headline: 'Website kamu sedang offline',
     sub: (d) =>
       `Masa aktif <strong>${d}</strong> sudah habis dan pengunjung tidak bisa membukanya. Kabar baiknya: semua data & desainmu aman. Perpanjang sekarang dan website langsung tayang lagi.`,
     cta: 'Aktifkan Kembali',
-    accent: '#EF4444',
   },
 };
 
@@ -84,8 +74,7 @@ export function buildReminderEmail(opts: {
         <!-- Body -->
         <tr><td style="background-color:#ffffff;padding:36px 32px 28px;">
           <div style="text-align:center;">
-            <span style="display:inline-block;background-color:${c.accent}1A;color:${c.accent};font-size:11px;font-weight:800;letter-spacing:2px;padding:6px 14px;border-radius:999px;border:1px solid ${c.accent}40;">${c.badge}</span>
-            <h1 style="margin:18px 0 10px;color:#1e293b;font-size:24px;line-height:1.3;font-weight:800;">${c.headline}</h1>
+            <h1 style="margin:0 0 10px;color:#1e293b;font-size:24px;line-height:1.3;font-weight:800;">${c.headline}</h1>
             <p style="margin:0 auto;max-width:440px;color:#475569;font-size:14px;line-height:1.7;">${c.sub(domain, expiresStr)}</p>
           </div>
 
@@ -100,7 +89,7 @@ export function buildReminderEmail(opts: {
 
           <!-- Harga -->
           <p style="text-align:center;color:#475569;font-size:14px;margin:0 0 22px;">
-            Perpanjang cuma <strong style="color:#1e293b;">Rp50.000/bulan</strong> — lebih murah dari sekali makan bareng klien 😄
+            Perpanjang cuma <strong style="color:#1e293b;">Rp50.000/bulan</strong>.
           </p>
 
           <!-- CTA -->
