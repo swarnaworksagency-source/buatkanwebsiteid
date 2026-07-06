@@ -209,7 +209,7 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
                             <Database className="w-4 h-4" /> Supabase Studio <ExternalLink className="w-3.5 h-3.5 text-zinc-500" />
                         </a>
                         {monitorTab && (
-                            <span className="ml-auto text-xs text-zinc-500">klik tab lagi untuk menutup</span>
+                            <span className="ml-auto text-xs text-zinc-500 hidden sm:inline">klik tab lagi untuk menutup</span>
                         )}
                     </div>
                     {monitorTab ? (
@@ -217,7 +217,7 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
                             key={monitorTab}
                             src={MONITOR_TABS.find((t) => t.id === monitorTab)!.src}
                             title={MONITOR_TABS.find((t) => t.id === monitorTab)!.label}
-                            className="w-full h-[75vh] rounded-b-xl bg-zinc-950"
+                            className="w-full h-[70vh] sm:h-[75vh] min-h-[420px] rounded-b-xl bg-zinc-950"
                         />
                     ) : (
                         <p className="px-4 py-3 text-xs text-zinc-600">
@@ -231,7 +231,7 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
                     <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3">
                         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3">
                             <div className="flex items-center gap-2 text-xs text-zinc-500"><Globe className="w-3.5 h-3.5" /> Website</div>
-                            <div className="mt-1 text-2xl font-bold">{stats.websites.total}</div>
+                            <div className="mt-1 text-xl sm:text-2xl font-bold break-words">{stats.websites.total}</div>
                             <div className="mt-0.5 text-xs text-zinc-500">
                                 <span className="text-emerald-400">{stats.websites.active} aktif</span>
                                 {' · '}{stats.websites.draft} draft
@@ -240,17 +240,17 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
                         </div>
                         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3">
                             <div className="flex items-center gap-2 text-xs text-zinc-500"><Users className="w-3.5 h-3.5" /> User</div>
-                            <div className="mt-1 text-2xl font-bold">{stats.users ?? '—'}</div>
+                            <div className="mt-1 text-xl sm:text-2xl font-bold break-words">{stats.users ?? '—'}</div>
                             <div className="mt-0.5 text-xs text-zinc-500">terdaftar</div>
                         </div>
                         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3">
                             <div className="flex items-center gap-2 text-xs text-zinc-500"><Zap className="w-3.5 h-3.5" /> Generate AI</div>
-                            <div className="mt-1 text-2xl font-bold">{stats.generate.today}</div>
+                            <div className="mt-1 text-xl sm:text-2xl font-bold break-words">{stats.generate.today}</div>
                             <div className="mt-0.5 text-xs text-zinc-500">hari ini · {stats.generate.total} total</div>
                         </div>
                         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3">
                             <div className="flex items-center gap-2 text-xs text-zinc-500"><Wallet className="w-3.5 h-3.5" /> Pendapatan</div>
-                            <div className="mt-1 text-2xl font-bold">{fmtRupiah(stats.payments.revenue)}</div>
+                            <div className="mt-1 text-xl sm:text-2xl font-bold break-words">{fmtRupiah(stats.payments.revenue)}</div>
                             <div className="mt-0.5 text-xs text-zinc-500">{stats.payments.paidCount} pembayaran lunas</div>
                         </div>
                     </div>
@@ -309,7 +309,7 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
                                     {infra.pm2 ? (
                                         <ul className="mt-2 space-y-1.5">
                                             {infra.pm2.map((p) => (
-                                                <li key={p.name} className="flex items-center justify-between text-sm">
+                                                <li key={p.name} className="flex items-center justify-between gap-2 text-sm">
                                                     <span className="flex items-center gap-2">
                                                         <span className={`w-2 h-2 rounded-full ${p.status === 'online' ? 'bg-emerald-400' : 'bg-red-400'}`} />
                                                         {p.name}
@@ -347,12 +347,12 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
                                     {infra.docker ? (
                                         <ul className="mt-2 space-y-1.5">
                                             {infra.docker.map((c) => (
-                                                <li key={c.name} className="flex items-center justify-between text-sm">
+                                                <li key={c.name} className="flex items-center justify-between gap-2 text-sm">
                                                     <span className="flex items-center gap-2">
                                                         <span className={`w-2 h-2 rounded-full ${c.state === 'running' ? 'bg-emerald-400' : 'bg-red-400'}`} />
                                                         {c.name}
                                                     </span>
-                                                    <span className="text-xs text-zinc-500">{c.status}</span>
+                                                    <span className="text-xs text-zinc-500 text-right shrink-0">{c.status}</span>
                                                 </li>
                                             ))}
                                         </ul>

@@ -6,9 +6,11 @@ import { requireAdminApi } from '@/lib/auth';
 // admin dengan session Supabase yang bisa akses. Dipakai iframe di /admin.
 // Dozzle dijalankan dengan DOZZLE_BASE=/api/ops/logs supaya asset path cocok;
 // Netdata menghitung base dari window.location, jadi jalan di subpath apa pun.
-const TARGETS: Record<string, string> = {
-  netdata: 'http://127.0.0.1:19999',
-  logs: 'http://127.0.0.1:9888',
+// preserveBase: Dozzle jalan dengan DOZZLE_BASE=/api/ops/logs, jadi path
+// upstream harus tetap berprefix penuh; Netdata dilayani dari root-nya.
+const SERVICES: Record<string, { target: string; preserveBase: boolean }> = {
+  netdata: { target: 'http://127.0.0.1:19999', preserveBase: false },
+  logs: { target: 'http://127.0.0.1:9888', preserveBase: true },
 };
 
 const BASE = '/api/ops';
@@ -29,13 +31,15 @@ async function proxyOps(request: Request, params: Promise<{ path: string[] }>) {
 
   const { path } = await params;
   const [service, ...rest] = path ?? [];
-  const target = TARGETS[service];
-  if (!target) {
+  const svc = SERVICES[service];
+  if (!svc) {
     return NextResponse.json({ error: 'Service ops tidak dikenal.' }, { status: 404 });
   }
 
   const { search } = new URL(request.url);
-  const upstreamUrl = `${target}/${rest.map(encodeURIComponent).join('/')}${search}`;
+  const restPath = rest.map(encodeURIComponent).join('/');
+  const upstreamPath = svc.preserveBase ? `${BASE}/${service}/${restPath}` : `/${restPath}`;
+  const upstreamUrl = `${svc.target}${upstreamPath}${search}`;
 
   const headers = new Headers();
   for (const name of PASSTHROUGH_HEADERS) {
@@ -45,11 +49,15 @@ async function proxyOps(request: Request, params: Promise<{ path: string[] }>) {
 
   let upstream: Response;
   try {
+    // redirect: 'follow' penting — upstream me-redirect trailing-slash dengan
+    // Location absolut ke 127.0.0.1 (tak bisa dijangkau browser), dan Next
+    // sendiri menghapus trailing slash (308) sehingga meneruskan redirect
+    // mentah membuat loop. Diikuti di server, browser hanya terima hasil akhir.
     upstream = await fetch(upstreamUrl, {
       method: request.method,
       headers,
       body: request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body,
-      redirect: 'manual',
+      redirect: 'follow',
       // @ts-expect-error duplex wajib di Node fetch saat meneruskan body stream
       duplex: 'half',
     });
@@ -65,11 +73,6 @@ async function proxyOps(request: Request, params: Promise<{ path: string[] }>) {
   resHeaders.delete('content-encoding');
   resHeaders.delete('content-length');
   resHeaders.delete('transfer-encoding');
-  // Redirect relatif dari upstream harus tetap di bawah prefix proxy.
-  const location = resHeaders.get('location');
-  if (location && location.startsWith('/')) {
-    resHeaders.set('location', `${BASE}/${service}${location}`);
-  }
 
   const body = upstream.status === 204 || upstream.status === 304 ? null : upstream.body;
   return new Response(body, { status: upstream.status, headers: resHeaders });
