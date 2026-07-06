@@ -19,11 +19,23 @@ interface AdminUser {
     activeWebsites: number
 }
 
+interface ActiveSite {
+    id: string
+    subdomain: string | null
+    namaUsaha: string | null
+    userEmail: string
+    userName: string
+    harga: number | null
+    activeAt: string | null
+    expiresAt: string | null
+}
+
 interface Stats {
     websites: { total: number; active: number; draft: number; preview: number; expired: number }
     users: number | null
     generate: { today: number; total: number }
     payments: { paidCount: number; revenue: number }
+    activeSites: ActiveSite[]
 }
 
 interface Infra {
@@ -254,6 +266,76 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
                             <div className="mt-0.5 text-xs text-zinc-500">{stats.payments.paidCount} pembayaran lunas</div>
                         </div>
                     </div>
+                )}
+
+                {/* Website aktif & berbayar */}
+                {stats && (
+                    <section className="mt-8">
+                        <h2 className="text-lg font-semibold flex items-center gap-2 flex-wrap">
+                            <Globe className="w-5 h-5 text-emerald-400" /> Website Aktif & Berbayar
+                            <span className="text-xs font-normal text-zinc-500">
+                                {stats.activeSites.length} aktif · {stats.activeSites.filter((s) => s.harga != null).length} berbayar
+                            </span>
+                        </h2>
+
+                        <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-800">
+                            <table className="w-full text-sm">
+                                <thead className="bg-zinc-900/70 text-zinc-400 text-left">
+                                    <tr>
+                                        <th className="px-4 py-3 font-medium whitespace-nowrap">Domain</th>
+                                        <th className="px-4 py-3 font-medium whitespace-nowrap">User</th>
+                                        <th className="px-4 py-3 font-medium whitespace-nowrap">Bayar</th>
+                                        <th className="px-4 py-3 font-medium whitespace-nowrap">Aktif sejak</th>
+                                        <th className="px-4 py-3 font-medium whitespace-nowrap">Kedaluwarsa</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-zinc-800">
+                                    {stats.activeSites.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="px-4 py-10 text-center text-zinc-500">
+                                                Belum ada website aktif.
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {stats.activeSites.map((s) => (
+                                        <tr key={s.id} className="hover:bg-zinc-900/40">
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                {s.subdomain ? (
+                                                    <a
+                                                        href={`https://${s.subdomain}.${MAIN_DOMAIN}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-emerald-300 hover:underline inline-flex items-center gap-1"
+                                                    >
+                                                        {s.subdomain}.{MAIN_DOMAIN}
+                                                        <ExternalLink className="w-3 h-3 text-zinc-600" />
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-zinc-500">(tanpa subdomain)</span>
+                                                )}
+                                                {s.namaUsaha && <div className="text-zinc-500 text-xs">{s.namaUsaha}</div>}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="text-zinc-200 whitespace-nowrap">{s.userEmail || '—'}</div>
+                                                {s.userName && <div className="text-zinc-500 text-xs">{s.userName}</div>}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                {s.harga != null ? (
+                                                    <span className="text-emerald-300">{fmtRupiah(s.harga)}</span>
+                                                ) : (
+                                                    <span className="rounded bg-amber-900/40 text-amber-300 text-[11px] px-1.5 py-0.5">
+                                                        tanpa pembayaran
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-zinc-400 whitespace-nowrap">{fmtDate(s.activeAt)}</td>
+                                            <td className="px-4 py-3 text-zinc-400 whitespace-nowrap">{fmtDate(s.expiresAt)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
                 )}
 
                 {/* Infra VPS */}
