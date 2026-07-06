@@ -152,8 +152,11 @@ export default function PricingSection() {
                 <span className="text-4xl font-extrabold text-white tracking-tight">
                   {isEarlyAdopter ? "Rp99.000" : "Rp199.000"}
                 </span>
-                <span className="text-zinc-500 text-[13px] font-medium">/tahun</span>
+                <span className="text-zinc-400 text-[13px] font-medium">/tahun pertama</span>
               </div>
+              <p className="text-zinc-400 text-[12px] mt-1.5">
+                Perpanjangan hanya <span className="text-white font-semibold">Rp50.000/bulan</span> setelah tahun pertama
+              </p>
 
               {/* Savings Badge */}
               <div className={`transition-opacity duration-300 absolute -top-3 right-0 sm:-right-2 md:-right-4 lg:-right-6 rotate-6 ${isEarlyAdopter ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
