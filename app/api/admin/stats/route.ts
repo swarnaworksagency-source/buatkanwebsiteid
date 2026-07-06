@@ -22,7 +22,7 @@ export async function GET() {
       .select('*', { count: 'exact', head: true })
       .gte('created_at', startOfDay.toISOString()),
     admin.from('generate_logs').select('*', { count: 'exact', head: true }),
-    admin.from('payments').select('website_id, harga, status, paid_at'),
+    admin.from('payments').select('website_id, harga, status, paid_at').is('deleted_at', null),
   ]);
 
   interface SiteRow {
