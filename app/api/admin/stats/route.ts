@@ -15,7 +15,7 @@ export async function GET() {
   startOfDay.setHours(0, 0, 0, 0);
 
   const [sitesRes, usersRes, genTodayRes, genTotalRes, paymentsRes] = await Promise.all([
-    admin.from('websites').select('id, subdomain, nama_usaha, user_id, status, expires_at'),
+    admin.from('websites').select('id, subdomain, nama_usaha, user_id, status, expires_at, created_at'),
     admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
     admin
       .from('generate_logs')
@@ -32,6 +32,7 @@ export async function GET() {
     user_id: string;
     status: string;
     expires_at: string | null;
+    created_at: string | null;
   }
   interface PaymentRow {
     website_id: string | null;
@@ -69,9 +70,9 @@ export async function GET() {
     }
   }
 
-  // Daftar website berstatus active + info pembayarannya (paid_at = tanggal aktif).
-  const activeSites = ((sitesRes.data ?? []) as SiteRow[])
-    .filter((s) => s.status === 'active')
+  // Semua website + info pembayaran (paid_at = tanggal aktif) + pemiliknya.
+  // UI memfilter per status; default menampilkan yang active.
+  const sites = ((sitesRes.data ?? []) as SiteRow[])
     .map((s) => {
       const paid = paidByWebsite.get(s.id);
       const user = userById.get(s.user_id);
@@ -79,14 +80,18 @@ export async function GET() {
         id: s.id,
         subdomain: s.subdomain,
         namaUsaha: s.nama_usaha,
+        status: s.status,
         userEmail: user?.email ?? '',
         userName: user?.name ?? '',
         harga: paid?.harga ?? null,
         activeAt: paid?.paidAt ?? null,
+        createdAt: s.created_at,
         expiresAt: s.expires_at,
       };
     })
-    .sort((a, b) => ((a.activeAt ?? '') < (b.activeAt ?? '') ? 1 : -1));
+    .sort((a, b) =>
+      ((a.activeAt ?? a.createdAt ?? '') < (b.activeAt ?? b.createdAt ?? '') ? 1 : -1)
+    );
 
   return NextResponse.json({
     websites,
@@ -96,6 +101,6 @@ export async function GET() {
       total: genTotalRes.count ?? 0,
     },
     payments: { paidCount, revenue },
-    activeSites,
+    sites,
   });
 }
