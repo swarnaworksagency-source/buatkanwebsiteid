@@ -148,14 +148,14 @@ export default function PricingSection() {
 
             {/* Row 2: Harga */}
             <div className="flex flex-col mb-2 relative">
-              <div className="flex items-baseline gap-1">
+              <div className="flex items-baseline gap-1 whitespace-nowrap">
                 <span className="text-4xl font-extrabold text-white tracking-tight">
                   {isEarlyAdopter ? "Rp99.000" : "Rp199.000"}
                 </span>
-                <span className="text-zinc-400 text-[13px] font-medium">/tahun pertama</span>
+                <span className="text-zinc-400 text-[13px] font-medium whitespace-nowrap">/tahun pertama</span>
               </div>
-              <p className="text-zinc-400 text-[12px] mt-1.5">
-                Perpanjangan hanya <span className="text-white font-semibold">Rp50.000/bulan</span> setelah tahun pertama
+              <p className="text-zinc-400 text-[12px] mt-1.5 whitespace-nowrap">
+                Perpanjangan <span className="text-white font-semibold">50k/bulan</span>
               </p>
 
               {/* Savings Badge */}

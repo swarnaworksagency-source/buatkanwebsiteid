@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       // Ambil payment dulu untuk cross-check nominal + idempotensi.
       const { data: existing, error: fetchError } = await supabase
         .from('payments')
-        .select('id, website_id, harga, status')
+        .select('id, website_id, harga, status, months')
         .eq('order_id', merchantOrderId)
         .is('deleted_at', null)
         .single();
@@ -74,8 +74,14 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Amount mismatch' }, { status: 400 });
       }
 
-      // Catatan: tidak ada early-return idempotensi di sini. Kalau payment sudah paid
-      // tapi aktivasi website sempat gagal (500 + retry Duitku), proses ulang penuh perlu
+      // Perpanjangan (months terisi) MENAMBAH expires_at secara relatif, jadi callback
+      // duplikat TIDAK boleh diproses dua kali — beda dengan aktivasi yang absolut.
+      if (existing.months && existing.status === 'paid') {
+        return NextResponse.json({ status: 'already processed' }, { status: 200 });
+      }
+
+      // Catatan (aktivasi): tidak ada early-return idempotensi di sini. Kalau payment sudah
+      // paid tapi aktivasi website sempat gagal (500 + retry Duitku), proses ulang penuh perlu
       // supaya website tetap teraktivasi. expires_at dihitung absolut (now+1thn), jadi
       // callback duplikat aman (tidak menumpuk).
       const { data: payment, error: updateError } = await supabase
@@ -97,9 +103,24 @@ export async function POST(request: Request) {
       }
 
       if (payment) {
-        // Hitung tanggal expire: 1 tahun dari sekarang (langganan subdomain 1 tahun)
-        const expiresAt = new Date();
-        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+        let expiresAt: Date;
+        if (payment.months) {
+          // Perpanjangan: tambah N bulan dari expires_at yang tersisa (perpanjang di muka),
+          // atau dari sekarang kalau sudah lewat/expired (reaktivasi).
+          const { data: site } = await supabase
+            .from('websites')
+            .select('expires_at')
+            .eq('id', payment.website_id)
+            .single();
+          const now = new Date();
+          const currentExpiry = site?.expires_at ? new Date(site.expires_at) : now;
+          expiresAt = currentExpiry > now ? new Date(currentExpiry) : now;
+          expiresAt.setMonth(expiresAt.getMonth() + Number(payment.months));
+        } else {
+          // Aktivasi pertama: 1 tahun dari sekarang (langganan subdomain 1 tahun)
+          expiresAt = new Date();
+          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+        }
 
         // Update website status to active + set expires_at
         const { error: websiteError } = await supabase
@@ -113,7 +134,9 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: 'Failed to activate website' }, { status: 500 });
         }
 
-        console.log(`Payment successful and website activated for order: ${merchantOrderId}`);
+        console.log(
+          `Payment successful, website ${payment.months ? `extended ${payment.months} mo` : 'activated'} for order: ${merchantOrderId}`
+        );
       }
     } else if (resultCode === '01') {
       // Pembayaran Gagal

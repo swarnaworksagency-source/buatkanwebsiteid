@@ -118,6 +118,12 @@ export default function DashboardClient({
     // Pending Payments State
     const [pendingPayments, setPendingPayments] = useState<any[]>([])
     const [continueLoading, setContinueLoading] = useState<string|null>(null)
+
+    // Renewal state (perpanjangan Rp50rb/bulan)
+    const [renewingWebsite, setRenewingWebsite] = useState<Website | null>(null)
+    const [renewMonths, setRenewMonths] = useState(1)
+    const [isRenewing, setIsRenewing] = useState(false)
+    const [renewError, setRenewError] = useState('')
     const [showCancelModal, setShowCancelModal] = useState<{paymentId: string, websiteId: string} | null>(null)
     const [cancelLoading, setCancelLoading] = useState(false)
 
@@ -221,6 +227,43 @@ export default function DashboardClient({
             alert('Gagal mengubah nama website.')
         } finally {
             setIsRenaming(false)
+        }
+    }
+
+    // ─── Renewal handlers ───
+    const HARGA_PERPANJANG = 50000
+
+    const openRenewModal = (site: Website) => {
+        setRenewingWebsite(site)
+        setRenewMonths(1)
+        setRenewError('')
+    }
+
+    // Prakiraan expires_at baru: dari sisa masa aktif (kalau masih aktif) atau dari sekarang.
+    const getRenewedExpiry = (site: Website, months: number) => {
+        const now = new Date()
+        const current = site.expires_at ? new Date(site.expires_at.replace(' ', 'T')) : now
+        const base = current > now ? new Date(current) : new Date(now)
+        base.setMonth(base.getMonth() + months)
+        return base
+    }
+
+    const startRenewal = async () => {
+        if (!renewingWebsite) return
+        setIsRenewing(true)
+        setRenewError('')
+        try {
+            const res = await fetch('/api/payment/renew', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ websiteId: renewingWebsite.id, months: renewMonths }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Gagal membuat pembayaran. Coba lagi.')
+            window.location.href = data.paymentUrl
+        } catch (err: any) {
+            setRenewError(err.message || 'Gagal membuat pembayaran. Coba lagi.')
+            setIsRenewing(false)
         }
     }
 
@@ -831,18 +874,25 @@ export default function DashboardClient({
                                             </a>
                                         )}
 
+                                        {/* Sisa masa aktif */}
+                                        {site.status === 'active' && site.expires_at && (
+                                            <div className={`mb-4 text-[12px] font-medium ${daysLeft <= 14 ? 'text-amber-400/80' : 'text-zinc-500'}`}>
+                                                Masa aktif sisa {daysLeft} hari
+                                            </div>
+                                        )}
+
                                         {/* Spacer */}
                                         <div className="flex-1" />
 
                                         {/* Actions */}
                                         <div className="flex flex-col gap-2 mt-2">
                                             {site.status === 'expired' ? (
-                                                <Link
-                                                    href="/#harga"
-                                                    className="flex items-center justify-center bg-[#1E466B] hover:bg-[#255580] text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all"
+                                                <button
+                                                    onClick={(e) => { e.preventDefault(); openRenewModal(site) }}
+                                                    className="flex items-center justify-center bg-[#1E466B] hover:bg-[#255580] text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all cursor-pointer"
                                                 >
-                                                    Perpanjang
-                                                </Link>
+                                                    Perpanjang &mdash; Rp50rb/bulan
+                                                </button>
                                             ) : site.status === 'active' ? (
                                                 <>
                                                     {site.subdomain && (
@@ -856,12 +906,20 @@ export default function DashboardClient({
                                                             <ExternalLink className="w-3 h-3" />
                                                         </a>
                                                     )}
-                                                    <Link
-                                                        href={`/buat?id=${site.id}`}
-                                                        className="flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all"
-                                                    >
-                                                        Kelola
-                                                    </Link>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <Link
+                                                            href={`/buat?id=${site.id}`}
+                                                            className="flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all"
+                                                        >
+                                                            Kelola
+                                                        </Link>
+                                                        <button
+                                                            onClick={(e) => { e.preventDefault(); openRenewModal(site) }}
+                                                            className="flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-white text-[13px] font-semibold py-2.5 px-4 rounded-xl transition-all cursor-pointer"
+                                                        >
+                                                            Perpanjang
+                                                        </button>
+                                                    </div>
                                                 </>
                                             ) : (
                                                 /* Preview status: show both preview and deploy buttons */
@@ -957,6 +1015,96 @@ export default function DashboardClient({
                                         <><Loader2 className="w-4 h-4 animate-spin" /> Menghapus...</>
                                     ) : (
                                         "Ya, Hapus Permanen"
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ═══ RENEWAL MODAL ═══ */}
+            {renewingWebsite && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => !isRenewing && setRenewingWebsite(null)} />
+
+                    <div className="relative w-full max-w-md bg-[#18181b] border border-zinc-800 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden" style={{ animation: 'fadeInUp 0.2s ease-out' }}>
+                        <div className="px-6 pt-8 pb-6 border-b border-zinc-800 text-center">
+                            <h3 className="text-white font-bold text-[20px] mb-1">Perpanjang Masa Aktif</h3>
+                            <p className="text-zinc-500 text-[14px]">
+                                {renewingWebsite.subdomain
+                                    ? `${renewingWebsite.subdomain}.${MAIN_DOMAIN}`
+                                    : renewingWebsite.nama_bisnis}
+                            </p>
+                        </div>
+
+                        <div className="px-6 py-5">
+                            {renewingWebsite.status === 'expired' && (
+                                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-4 text-[13px] text-amber-200 text-center">
+                                    Website ini sudah expired — setelah pembayaran, website langsung aktif kembali.
+                                </div>
+                            )}
+
+                            <p className="text-zinc-400 text-[13px] mb-3">
+                                Pilih durasi perpanjangan (Rp50.000/bulan):
+                            </p>
+                            <div className="grid grid-cols-4 gap-2 mb-5">
+                                {[1, 3, 6, 12].map((m) => (
+                                    <button
+                                        key={m}
+                                        onClick={() => setRenewMonths(m)}
+                                        disabled={isRenewing}
+                                        className={`py-2.5 rounded-xl text-[13px] font-semibold border transition-all cursor-pointer ${
+                                            renewMonths === m
+                                                ? 'border-[#67BAF4] bg-[#67BAF4]/10 text-[#67BAF4]'
+                                                : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
+                                        }`}
+                                    >
+                                        {m} bln
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4 mb-5 text-[13px] space-y-1.5">
+                                <div className="flex justify-between text-zinc-400">
+                                    <span>Total pembayaran</span>
+                                    <span className="text-white font-bold">
+                                        Rp{(HARGA_PERPANJANG * renewMonths).toLocaleString('id-ID')}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-zinc-400">
+                                    <span>Aktif sampai</span>
+                                    <span className="text-emerald-400 font-semibold">
+                                        {getRenewedExpiry(renewingWebsite, renewMonths).toLocaleDateString('id-ID', {
+                                            day: '2-digit', month: 'short', year: 'numeric',
+                                        })}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {renewError && (
+                                <div className="mb-4 text-red-400 text-[13px] flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4 flex-shrink-0" /> {renewError}
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setRenewingWebsite(null)}
+                                    disabled={isRenewing}
+                                    className="flex-1 bg-transparent hover:bg-zinc-800 border border-zinc-700 text-zinc-300 font-semibold text-[14px] py-3 px-4 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+                                >
+                                    Batalkan
+                                </button>
+                                <button
+                                    onClick={startRenewal}
+                                    disabled={isRenewing}
+                                    className="flex-1 bg-gradient-to-r from-[#1E466B] to-[#67BAF4] hover:from-[#255580] hover:to-[#67BAF4] text-white font-semibold text-[14px] py-3 px-4 rounded-xl transition-all disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                    {isRenewing ? (
+                                        <><Loader2 className="w-4 h-4 animate-spin" /> Memproses...</>
+                                    ) : (
+                                        'Lanjut Bayar'
                                     )}
                                 </button>
                             </div>
