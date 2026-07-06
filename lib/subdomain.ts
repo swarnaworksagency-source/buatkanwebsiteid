@@ -8,6 +8,7 @@ export const RESERVED_SUBDOMAINS = [
   'support', 'help', 'docs', 'status',
   'buat', 'preview', 'auth', 'harga',
   'portofolio', 'tentang', 'beranda', 's',
+  'db', 'monitor', 'logs',
 ];
 
 const SUBDOMAIN_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;

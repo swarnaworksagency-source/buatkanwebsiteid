@@ -80,11 +80,15 @@ export async function proxy(request: NextRequest) {
     // (Lapis kedua: requireAdmin() di server component + requireAdminApi() di /api/admin.)
     // Catatan: matcher di bawah meng-exclude /api, jadi endpoint API harus self-guard.
     if (request.nextUrl.pathname.startsWith('/admin')) {
+        // Origin dari header forwarded (Caddy) — request.url berbasis alamat
+        // bind server saat self-host (localhost:3000), redirect darinya salah arah.
+        const fwdHost = request.headers.get('x-forwarded-host') ?? hostnameFull
+        const fwdProto = request.headers.get('x-forwarded-proto') ?? 'https'
         if (!user) {
-            return NextResponse.redirect(new URL('/auth/login', request.url))
+            return NextResponse.redirect(`${fwdProto}://${fwdHost}/auth/login`)
         }
         if (!isAdmin(user)) {
-            return NextResponse.redirect(new URL('/dashboard', request.url))
+            return NextResponse.redirect(`${fwdProto}://${fwdHost}/dashboard`)
         }
     }
 
