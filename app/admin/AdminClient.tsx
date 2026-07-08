@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { Fragment, useEffect, useState, useCallback } from 'react'
 import {
     RefreshCw, Trash2, RotateCcw, ShieldCheck, Users, AlertTriangle,
     ExternalLink, Database, Activity, ScrollText, Globe, Zap, Wallet,
     Server, HardDrive, MemoryStick, Archive, Boxes,
+    MessageSquare, CalendarClock, ChevronDown,
 } from 'lucide-react'
 
 interface AdminUser {
@@ -68,6 +69,38 @@ interface Infra {
     backup: { fileName: string; sizeBytes: number; modifiedAt: string; count: number } | null
 }
 
+interface AgentUser {
+    id: string
+    phone: string
+    name: string | null
+    status: string
+    created_at: string
+    active_reminders: number
+    total_reminders: number
+    last_activity: string | null
+}
+interface AgentSlot { used_count: number; max_uses: number }
+interface AgentRecurrence { freq: string; time: string; weekday: number; day: number }
+interface AgentReminder {
+    id: string
+    title: string
+    recurrence: AgentRecurrence | null
+    next_run_at: string
+    status: string
+    source_text: string | null
+    created_at: string
+}
+interface AgentMsg { direction: string; body: string | null; created_at: string }
+
+const HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+const recurrenceLabel = (rec: AgentRecurrence | null): string => {
+    if (!rec || !rec.freq || rec.freq === 'none') return 'sekali'
+    if (rec.freq === 'daily') return `tiap hari ${rec.time}`
+    if (rec.freq === 'weekly') return `tiap ${HARI[rec.weekday] ?? '?'} ${rec.time}`
+    if (rec.freq === 'monthly') return `tiap tgl ${rec.day} ${rec.time}`
+    return rec.freq
+}
+
 const MAIN_DOMAIN = process.env.NEXT_PUBLIC_MAIN_DOMAIN || 'buatkanweb.id'
 
 // Netdata & Dozzle di-embed via proxy internal /api/ops/* (dijaga requireAdminApi,
@@ -107,20 +140,33 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
     const [monitorTab, setMonitorTab] = useState<MonitorTabId | null>(null)
     const [siteFilter, setSiteFilter] = useState<SiteFilter>('active')
 
+    // Agent Jadwal (WA bot)
+    const [agentUsers, setAgentUsers] = useState<AgentUser[]>([])
+    const [agentSlot, setAgentSlot] = useState<AgentSlot | null>(null)
+    const [expandedAgent, setExpandedAgent] = useState<string | null>(null)
+    const [agentLogs, setAgentLogs] = useState<Record<string, { reminders: AgentReminder[]; messages: AgentMsg[] }>>({})
+    const [logsLoading, setLogsLoading] = useState<string | null>(null)
+
     const loadAll = useCallback(async () => {
         setLoading(true)
         setError(null)
         try {
-            const [usersRes, statsRes, infraRes] = await Promise.all([
+            const [usersRes, statsRes, infraRes, agentRes] = await Promise.all([
                 fetch('/api/admin/users', { cache: 'no-store' }),
                 fetch('/api/admin/stats', { cache: 'no-store' }),
                 fetch('/api/admin/infra', { cache: 'no-store' }),
+                fetch('/api/admin/agent', { cache: 'no-store' }),
             ])
             const usersData = await usersRes.json()
             if (!usersRes.ok) throw new Error(usersData.error || 'Gagal memuat user.')
             setUsers(usersData.users)
             if (statsRes.ok) setStats(await statsRes.json())
             if (infraRes.ok) setInfra(await infraRes.json())
+            if (agentRes.ok) {
+                const a = await agentRes.json()
+                setAgentUsers(a.users ?? [])
+                setAgentSlot(a.slot ?? null)
+            }
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Gagal memuat data.')
         } finally {
@@ -220,8 +266,55 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
         }
     }
 
+    // ─── Agent Jadwal handlers ───
+    const toggleAgentLogs = async (u: AgentUser) => {
+        if (expandedAgent === u.id) { setExpandedAgent(null); return }
+        setExpandedAgent(u.id)
+        if (agentLogs[u.id]) return
+        setLogsLoading(u.id)
+        try {
+            const res = await fetch(`/api/admin/agent/logs?userId=${u.id}`, { cache: 'no-store' })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Gagal memuat log.')
+            setAgentLogs((prev) => ({ ...prev, [u.id]: { reminders: data.reminders ?? [], messages: data.messages ?? [] } }))
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Gagal memuat log.')
+        } finally {
+            setLogsLoading(null)
+        }
+    }
+
+    const deleteAgentUser = async (u: AgentUser) => {
+        const ok = window.confirm(
+            `Hapus pengguna Agent "${u.name || u.phone}" beserta semua pesan & jadwalnya? Slot aktivasi akan dikembalikan.`
+        )
+        if (!ok) return
+        setBusyId(u.id)
+        setError(null)
+        try {
+            const res = await fetch('/api/admin/agent/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: u.id }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Gagal menghapus pengguna agent.')
+            flash(`Pengguna agent ${u.name || u.phone} dihapus.`)
+            setAgentUsers((prev) => prev.filter((x) => x.id !== u.id))
+            setAgentSlot((prev) => (prev ? { ...prev, used_count: Math.max(0, prev.used_count - 1) } : prev))
+            if (expandedAgent === u.id) setExpandedAgent(null)
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Gagal menghapus pengguna agent.')
+        } finally {
+            setBusyId(null)
+        }
+    }
+
     const fmtDate = (iso: string | null) =>
         iso ? new Date(iso).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+
+    const fmtDateTime = (iso: string | null) =>
+        iso ? new Date(iso).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
 
     return (
         <main className="min-h-screen bg-zinc-950 text-zinc-100 px-4 sm:px-6 py-10">
@@ -642,6 +735,142 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
                     <p className="mt-4 text-xs text-zinc-600">
                         Reset = hapus log generate hari ini (kuota kembali penuh). Hapus = hapus user + semua website &
                         datanya permanen. Admin tidak memiliki batas generate harian.
+                    </p>
+                </section>
+
+                {/* Agent Jadwal (WA bot) */}
+                <section className="mt-8">
+                    <h2 className="text-lg font-semibold flex items-center gap-2 flex-wrap">
+                        <MessageSquare className="w-5 h-5 text-emerald-400" /> Agent Jadwal
+                        <span className="text-xs font-normal text-zinc-500">{agentUsers.length} pengguna</span>
+                        {agentSlot && (
+                            <span className="rounded bg-emerald-900/40 text-emerald-300 text-[11px] px-2 py-0.5">
+                                slot {agentSlot.used_count}/{agentSlot.max_uses} terpakai
+                            </span>
+                        )}
+                    </h2>
+                    <p className="mt-1 text-xs text-zinc-500">
+                        Pengguna yang redeem kode <span className="font-mono text-zinc-300">buatkanweb123</span> lewat WhatsApp.
+                        Klik <span className="text-zinc-300">Log</span> untuk lihat apa yang mereka jadwalkan.
+                    </p>
+
+                    <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-800">
+                        <table className="w-full text-sm">
+                            <thead className="bg-zinc-900/70 text-zinc-400 text-left">
+                                <tr>
+                                    <th className="px-4 py-3 font-medium">Pengguna</th>
+                                    <th className="px-4 py-3 font-medium">Aktivasi</th>
+                                    <th className="px-4 py-3 font-medium">Reminder</th>
+                                    <th className="px-4 py-3 font-medium">Aktivitas terakhir</th>
+                                    <th className="px-4 py-3 font-medium text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-800">
+                                {loading && (
+                                    <tr><td colSpan={5} className="px-4 py-10 text-center text-zinc-500">Memuat…</td></tr>
+                                )}
+                                {!loading && agentUsers.length === 0 && (
+                                    <tr><td colSpan={5} className="px-4 py-10 text-center text-zinc-500">Belum ada yang aktivasi.</td></tr>
+                                )}
+                                {!loading && agentUsers.map((u) => {
+                                    const open = expandedAgent === u.id
+                                    const log = agentLogs[u.id]
+                                    return (
+                                        <Fragment key={u.id}>
+                                            <tr className="hover:bg-zinc-900/40">
+                                                <td className="px-4 py-3">
+                                                    <div className="font-medium text-zinc-100">{u.name || '(tanpa nama)'}</div>
+                                                    <div className="text-zinc-500 text-xs font-mono">{u.phone}</div>
+                                                </td>
+                                                <td className="px-4 py-3 text-zinc-400">{fmtDateTime(u.created_at)}</td>
+                                                <td className="px-4 py-3 text-zinc-300">
+                                                    {u.active_reminders} <span className="text-zinc-500 text-xs">aktif / {u.total_reminders} total</span>
+                                                </td>
+                                                <td className="px-4 py-3 text-zinc-400">{fmtDateTime(u.last_activity)}</td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            onClick={() => toggleAgentLogs(u)}
+                                                            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs font-medium hover:bg-zinc-800"
+                                                        >
+                                                            <ScrollText className="w-3.5 h-3.5" /> Log
+                                                            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => deleteAgentUser(u)}
+                                                            disabled={busyId === u.id}
+                                                            title="Hapus pengguna agent"
+                                                            className="inline-flex items-center gap-1.5 rounded-lg border border-red-800/60 bg-red-900/20 px-2.5 py-1.5 text-xs font-medium text-red-300 hover:bg-red-900/40 disabled:opacity-40"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" /> Hapus
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {open && (
+                                                <tr className="bg-zinc-950/60">
+                                                    <td colSpan={5} className="px-4 py-4">
+                                                        {logsLoading === u.id && <div className="text-zinc-500 text-xs">Memuat log…</div>}
+                                                        {log && (
+                                                            <div className="grid gap-4 md:grid-cols-2">
+                                                                <div>
+                                                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 mb-2">
+                                                                        <CalendarClock className="w-3.5 h-3.5 text-[#67BAF4]" /> Jadwal ({log.reminders.length})
+                                                                    </div>
+                                                                    {log.reminders.length === 0 ? (
+                                                                        <div className="text-zinc-600 text-xs">Belum ada.</div>
+                                                                    ) : (
+                                                                        <ul className="space-y-1.5">
+                                                                            {log.reminders.map((r) => (
+                                                                                <li key={r.id} className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-xs">
+                                                                                    <div className="flex items-center justify-between gap-2">
+                                                                                        <span className="font-medium text-zinc-100">{r.title}</span>
+                                                                                        <span className={`rounded px-1.5 py-0.5 text-[10px] ${STATUS_BADGE[r.status] || 'bg-zinc-800 text-zinc-400'}`}>{r.status}</span>
+                                                                                    </div>
+                                                                                    <div className="text-zinc-500 mt-0.5">
+                                                                                        {recurrenceLabel(r.recurrence)} · berikutnya {fmtDateTime(r.next_run_at)}
+                                                                                    </div>
+                                                                                    {r.source_text && <div className="text-zinc-600 mt-0.5 italic">&ldquo;{r.source_text}&rdquo;</div>}
+                                                                                </li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    )}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300 mb-2">
+                                                                        <MessageSquare className="w-3.5 h-3.5 text-emerald-400" /> Pesan terakhir ({log.messages.length})
+                                                                    </div>
+                                                                    {log.messages.length === 0 ? (
+                                                                        <div className="text-zinc-600 text-xs">Belum ada.</div>
+                                                                    ) : (
+                                                                        <ul className="space-y-1 max-h-64 overflow-y-auto pr-1">
+                                                                            {log.messages.map((m, i) => (
+                                                                                <li key={i} className="text-xs flex gap-2">
+                                                                                    <span className={`shrink-0 font-mono ${m.direction === 'in' ? 'text-sky-400' : 'text-zinc-500'}`}>
+                                                                                        {m.direction === 'in' ? '→' : '←'}
+                                                                                    </span>
+                                                                                    <span className="text-zinc-400 break-words">{m.body}</span>
+                                                                                    <span className="ml-auto shrink-0 text-zinc-600">{fmtDateTime(m.created_at)}</span>
+                                                                                </li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </Fragment>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p className="mt-4 text-xs text-zinc-600">
+                        Hapus = buang pengguna + semua pesan & jadwalnya, lalu slot aktivasi dikembalikan (bisa diisi orang lain).
+                        &ldquo;→&rdquo; = pesan masuk dari user, &ldquo;←&rdquo; = balasan bot.
                     </p>
                 </section>
             </div>
