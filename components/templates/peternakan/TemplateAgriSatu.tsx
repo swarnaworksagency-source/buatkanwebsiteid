@@ -242,8 +242,8 @@ export default function TemplateAgriSatu(props: Props) {
         <div className={`relative z-10 w-full max-w-6xl mx-auto grid items-center ${isMob ? "grid-cols-1 gap-12 text-center" : "grid-cols-3 gap-8"}`}>
           {/* Stat pertama */}
           <div className={`${isMob ? "" : "flex flex-col"}`}>
-            <EditableText value={stats[0]?.val || "5000+"} onChange={(v) => setStat(0, "val", v)} isEditMode={em} as="div" className={`font-bold tracking-tight leading-none ${inkDark} ${isMob ? "text-[44px]" : "text-[clamp(40px,4vw,58px)]"}`} />
-            <EditableText value={stats[0]?.label || "Pelanggan Puas"} onChange={(v) => setStat(0, "label", v)} isEditMode={em} as="p" className={`font-semibold mt-2 ${inkDark} ${isMob ? "text-[15px]" : "text-[17px]"}`} />
+            <EditableText value={stats[1]?.val || "5000+"} onChange={(v) => setStat(1, "val", v)} isEditMode={em} as="div" className={`font-bold tracking-tight leading-none ${inkDark} ${isMob ? "text-[44px]" : "text-[clamp(40px,4vw,58px)]"}`} />
+            <EditableText value={stats[1]?.label || "Pelanggan Puas"} onChange={(v) => setStat(1, "label", v)} isEditMode={em} as="p" className={`font-semibold mt-2 ${inkDark} ${isMob ? "text-[15px]" : "text-[17px]"}`} />
             <EditableText value={t("pita.sub", "Dipercaya keluarga di berbagai daerah.")} onChange={(v) => patchUi("pita.sub", v)} isEditMode={em} as="p" className="text-[13px] mt-1" style={{ color: "#3d5236" }} />
           </div>
 
