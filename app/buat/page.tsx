@@ -1132,7 +1132,11 @@ function BuatContent() {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 14);
 
-      const templateId = safeStorage.get('selected_template') || 'jasa-001';
+      // Pakai template yang benar-benar dipakai form + preview (state selectedTemplateId),
+      // bukan baca ulang localStorage yang bisa berubah bila user buka template lain di
+      // tab lain — itu bikin template_id tersimpan ≠ template yang diisi user.
+      // Saat edit (idParam), selectedTemplateId sudah diisi dari template_id website di load.
+      const templateId = selectedTemplateId || 'jasa-001';
 
       let dbData, dbError;
 
