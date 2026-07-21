@@ -322,7 +322,7 @@ function BuatContent() {
         "Produksi Telur Ayam", "Produksi Telur Omega-3", "Produksi Telur Bebek & Telur Asin",
         "Produksi Telur Puyuh", "Produksi Telur Ayam Organik",
         // Peternakan ruminansia & besar
-        "Peternakan Sapi Perah", "Peternakan Sapi Potong", "Penggemukan Sapi", "Peternakan Kerbau",
+        "Peternakan Sapi Perah", "Peternakan Sapi Potong", "Peternak Sapi", "Peternakan Kerbau",
         "Peternakan Kambing Perah", "Peternakan Kambing & Domba", "Peternakan Babi", "Peternakan Kuda",
         // Ternak kecil & lain
         "Peternakan Kelinci", "Peternakan Lebah Madu", "Budidaya Cacing", "Budidaya Jangkrik",
