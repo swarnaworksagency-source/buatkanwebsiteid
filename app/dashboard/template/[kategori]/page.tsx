@@ -14,7 +14,7 @@ export default async function KategoriTemplatePage({ params }: { params: Promise
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) redirect('/auth/login')
-    if (!['jasa', 'fnb', 'kreatif', 'personal'].includes(kategori)) redirect('/dashboard/template')
+    if (!['jasa', 'fnb', 'kreatif', 'personal', 'peternakan', 'toko'].includes(kategori)) redirect('/dashboard/template')
 
     const userName = user.user_metadata?.full_name || user.user_metadata?.name || 'User'
     const userEmail = user.email || ''

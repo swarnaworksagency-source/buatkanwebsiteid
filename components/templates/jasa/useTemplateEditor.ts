@@ -18,6 +18,7 @@ export interface EditorState {
   aboutJudul: string;
   aboutDeskripsi: string;
   aboutKeunggulan: string[];
+  aboutSkills: string[];
   layanan: AILayananItem[];
   caraKerja: AICaraKerjaItem[];
   caraKerjaTitle: string;
@@ -30,6 +31,10 @@ export interface EditorState {
   footerSosmedTitle: string;
   footerDesc: string;
   copyright: string;
+  // Teks UI statis yang dioverride user (label section, badge, teks tombol). Key bebas per template.
+  uiText: Record<string, string>;
+  // Posisi/zoom tiap gambar (id → {x,y,scale}), dipakai template dengan slot gambar geser/zoom.
+  imagePositions: Record<string, { x: number; y: number; scale: number }>;
 }
 
 interface HookInput {
@@ -42,6 +47,8 @@ interface HookInput {
   testimonials: AITestimonial[];
   paketHarga: PaketHarga[];
   footer: TemplateData["footer"];
+  uiText?: Record<string, string>;
+  imagePositions?: Record<string, { x: number; y: number; scale: number }>;
   isEditMode: boolean;
   onContentUpdate?: (content: Partial<TemplateData>) => void;
   websiteId?: string;
@@ -49,9 +56,12 @@ interface HookInput {
 
 function buildPayload(s: EditorState, basePaket: PaketHarga[]): Partial<TemplateData> {
   return {
+    // Hanya dikirim bila template memakainya — template lama tidak ikut terpengaruh.
+    ...(Object.keys(s.uiText).length > 0 ? { uiText: s.uiText } : {}),
+    ...(Object.keys(s.imagePositions).length > 0 ? { imagePositions: s.imagePositions } : {}),
     namaBisnis: s.namaBisnis,
     hero: { headline: s.heroHeadline, subheadline: s.heroSub, ctaText: s.heroCta },
-    about: { judul: s.aboutJudul, deskripsi: s.aboutDeskripsi, keunggulan: s.aboutKeunggulan },
+    about: { judul: s.aboutJudul, deskripsi: s.aboutDeskripsi, keunggulan: s.aboutKeunggulan, skills: s.aboutSkills },
     layanan: s.layanan,
     caraKerja: s.caraKerja.slice(0, 3),
     caraKerjaTitle: s.caraKerjaTitle,
@@ -73,7 +83,7 @@ function buildPayload(s: EditorState, basePaket: PaketHarga[]): Partial<Template
 export function useTemplateEditor(input: HookInput) {
   const {
     namaBisnis, hero, about, layanan, caraKerja, caraKerjaTitle,
-    testimonials, paketHarga, footer, onContentUpdate, websiteId,
+    testimonials, paketHarga, footer, uiText, imagePositions, onContentUpdate, websiteId,
   } = input;
 
   const [s, setS] = useState<EditorState>(() => ({
@@ -84,6 +94,7 @@ export function useTemplateEditor(input: HookInput) {
     aboutJudul: about.judul,
     aboutDeskripsi: about.deskripsi,
     aboutKeunggulan: [...about.keunggulan],
+    aboutSkills: [...(about.skills ?? [])],
     layanan: [...layanan],
     caraKerja: [...caraKerja],
     caraKerjaTitle,
@@ -96,6 +107,8 @@ export function useTemplateEditor(input: HookInput) {
     footerSosmedTitle: footer.sosmedTitle || "Sosial Media",
     footerDesc: about.deskripsi.length > 120 ? about.deskripsi.substring(0, 120) + "..." : about.deskripsi,
     copyright: `© ${new Date().getFullYear()} ${namaBisnis}.`,
+    uiText: { ...(uiText ?? {}) },
+    imagePositions: { ...(imagePositions ?? {}) },
   }));
 
   const [hasChanges, setHasChanges] = useState(false);
@@ -113,6 +126,7 @@ export function useTemplateEditor(input: HookInput) {
       aboutJudul: about.judul,
       aboutDeskripsi: about.deskripsi,
       aboutKeunggulan: [...about.keunggulan],
+      aboutSkills: [...(about.skills ?? [])],
       layanan: [...layanan],
       caraKerja: [...caraKerja],
       caraKerjaTitle,
@@ -175,5 +189,17 @@ export function useTemplateEditor(input: HookInput) {
     }
   }, [s, onContentUpdate, websiteId]);
 
-  return { s, patch, hasChanges, saving, toast, handleSave };
+  // Ubah satu label UI statis (key bebas, mis. "produk.badge").
+  const patchUi = useCallback((key: string, value: string) => {
+    setS((prev) => ({ ...prev, uiText: { ...prev.uiText, [key]: value } }));
+    setHasChanges(true);
+  }, []);
+
+  // Simpan posisi/zoom satu gambar (id bebas, mis. "hero").
+  const setImgPos = useCallback((id: string, pos: { x: number; y: number; scale: number }) => {
+    setS((prev) => ({ ...prev, imagePositions: { ...prev.imagePositions, [id]: pos } }));
+    setHasChanges(true);
+  }, []);
+
+  return { s, patch, patchUi, setImgPos, hasChanges, saving, toast, handleSave };
 }

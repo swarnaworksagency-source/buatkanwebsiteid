@@ -9,7 +9,7 @@ interface EditableTextProps {
   isEditMode: boolean;
   className?: string;
   multiline?: boolean;
-  as?: "span" | "h1" | "h2" | "h3" | "h4" | "p";
+  as?: "span" | "h1" | "h2" | "h3" | "h4" | "p" | "div";
   style?: React.CSSProperties;
 }
 

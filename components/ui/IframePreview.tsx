@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ViewportWidthContext } from "@/components/ui/useIsMobile";
 import { createRoot, type Root } from "react-dom/client";
 
 /**
@@ -30,6 +31,9 @@ export function IframePreview({
   const rootRef = useRef<Root | null>(null);
   const rootedBodyRef = useRef<HTMLElement | null>(null);
   const [ready, setReady] = useState(false);
+  // Lebar iframe → dipakai template untuk memutuskan layout mobile/desktop.
+  // Media query saja tidak cukup: komponen dieksekusi di window parent.
+  const [width, setWidth] = useState<number | null>(null);
 
   const setup = () => {
     const doc = iframeRef.current?.contentDocument;
@@ -80,11 +84,26 @@ export function IframePreview({
     if (doc?.body) doc.body.style.background = dark ? "#111111" : "#ffffff";
   }, [dark]);
 
+  // Pantau lebar iframe supaya breakpoint template ikut lebar preview.
+  useEffect(() => {
+    const el = iframeRef.current;
+    if (!el) return;
+    const sync = () => setWidth(el.getBoundingClientRect().width || null);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Render ulang ke root iframe tiap children berubah (state parent berubah).
   useEffect(() => {
     if (!ready || !rootRef.current) return;
-    try { rootRef.current.render(children as React.ReactElement); } catch { /* root keburu unmount */ }
-  }, [ready, children]);
+    try {
+      rootRef.current.render(
+        <ViewportWidthContext.Provider value={width}>{children as React.ReactElement}</ViewportWidthContext.Provider>
+      );
+    } catch { /* root keburu unmount */ }
+  }, [ready, children, width]);
 
   // Cleanup root saat unmount. Unmount async + try/catch supaya tidak balapan dengan
   // React yang membongkar <iframe> di tree luar (cegah crash removeChild null).

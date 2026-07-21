@@ -13,6 +13,15 @@ export interface KeahlianItem {
   deskripsi: string;
 }
 
+// Produk yang diisi manual user (template peternakan/agri): tiap produk punya
+// foto, nama, deskripsi, dan harga sendiri. foto = URL (blob saat edit, https saat tersimpan).
+export interface ProdukItem {
+  nama: string;
+  deskripsi: string;
+  harga: string;
+  foto: string;
+}
+
 // Riwayat pengalaman (dipakai template personal-002/003: tab Pekerjaan/Kompetisi/Organisasi).
 export type PengalamanKategori = "pekerjaan" | "kompetisi" | "organisasi";
 export interface PengalamanItem {
@@ -54,12 +63,17 @@ export interface FormData {
   paketHarga: PaketHarga[];
   proyekPortofolio: ProyekPortofolio[];
   pengalaman: PengalamanItem[];
+  // Builder produk manual (template peternakan/agri) — foto+nama+deskripsi+harga per produk.
+  produkList: ProdukItem[];
   // Step 3 — Visual & Aset
   tema: "dark" | "light" | "";
   primaryColor: string;
   logo: string;
   fotoBisnis: string[];
   portofolio: string[];
+  // Judul tiap foto portofolio (sejajar index dengan `portofolio`).
+  // Dipakai template yang menampilkan label di kartu galeri, mis. jasa-001.
+  portofolioJudul: string[];
 }
 
 export interface AIHeroSection {
@@ -72,6 +86,8 @@ export interface AIAboutSection {
   judul: string;
   deskripsi: string;
   keunggulan: string[];
+  // Bar keahlian (opsional, dipakai TemplateLima). Format "Label|persen", mis. "Kualitas & Ketelitian|92".
+  skills?: string[];
 }
 
 export interface AILayananItem {
@@ -143,6 +159,10 @@ export interface TemplateData {
 
   // Posisi/zoom gambar per-id (dipakai template yang punya banyak slot gambar, mis. personal-001)
   imagePositions?: Record<string, { x: number; y: number; scale: number }>;
+
+  // Teks UI statis yang di-override user lewat inline edit (label section, badge, teks tombol).
+  // Key bebas per template, mis. "produk.badge". Kosong = pakai teks bawaan template.
+  uiText?: Record<string, string>;
   
   sosmed: {
     instagram: string;
@@ -161,4 +181,6 @@ export interface TemplateData {
   logo: string;
   fotoBisnis: string[];
   portofolio: string[];
+  // Judul tiap foto portofolio, sejajar index dengan `portofolio`.
+  portofolioJudul?: string[];
 }

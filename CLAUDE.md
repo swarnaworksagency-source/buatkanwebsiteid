@@ -76,7 +76,7 @@ Templates are registered centrally — never duplicate template metadata across 
 3. Add entry to `TEMPLATE_COMPONENTS` in `lib/templateRegistry.tsx`
 4. Add to `AVAILABLE_TEMPLATES` in `lib/templates.ts`
 
-Available: `jasa-001` (TemplateSatu), `personal-001` (neo-brutalist/index.tsx), `personal-002` (brutalist-bento/index.tsx), `personal-003` (neon-grid/index.tsx). FnB & Kreatif folders reserved for future.
+Available: `jasa-001` (TemplateDua, "Klasik"), `jasa-002` (TemplateLima, "Neon" — dark + neon green, design ref `public/scene*.png`), `personal-001` (neo-brutalist/index.tsx), `personal-002` (brutalist-bento/index.tsx), `personal-003` (neon-grid/index.tsx). `jasa-005` (TemplateSatu, "Minimalist" — the original template) is coming_soon. FnB & Kreatif folders reserved for future.
 
 ## Types: the two contracts
 

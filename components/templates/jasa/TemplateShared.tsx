@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check, Loader, X, ArrowLeft, ArrowRight, Star } from "lucide-react";
+import { Check, Loader, X, Menu, ArrowLeft, ArrowRight, Star } from "lucide-react";
 
 // Floating "Simpan Perubahan" button shown on the editor (not in edit-text mode).
 export function SaveBar({
@@ -134,5 +134,55 @@ export function Stars({
         );
       })}
     </div>
+  );
+}
+
+// Menu navigasi mobile (hamburger + panel dropdown).
+// Dipakai template yang navbar desktop-nya berupa deretan link: di layar sempit
+// link-link itu tidak muat, jadi diringkas ke dalam panel ini.
+// Nav pembungkusnya harus punya `relative` supaya panel menempel di bawah bar.
+export function MobileNav({
+  items,
+  bg,
+  textColor,
+  accent,
+}: {
+  items: { href: string; label: string }[];
+  /** warna latar panel (samakan dengan navbar saat solid) */
+  bg: string;
+  textColor: string;
+  accent: string;
+}) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={open ? "Tutup menu" : "Buka menu"}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
+        style={{ backgroundColor: `${accent}1f`, color: accent }}
+      >
+        {open ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+      </button>
+
+      {open && (
+        <div className="absolute top-full inset-x-0 border-t border-white/10 py-2 px-5 shadow-lg" style={{ backgroundColor: bg }}>
+          {items.map((n) => (
+            <a
+              key={n.href}
+              href={n.href}
+              onClick={() => setOpen(false)}
+              className="block py-2.5 text-[14px] font-medium"
+              style={{ color: textColor }}
+            >
+              {n.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </>
   );
 }

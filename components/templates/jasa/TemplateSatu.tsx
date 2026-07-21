@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useIsMobile } from "@/components/ui/useIsMobile";
 import type { TemplateData, AILayananItem, AICaraKerjaItem } from "@/types";
 import { EditableText } from "@/components/ui/EditableText";
 import { Check, Loader, ArrowRight, ArrowUpRight, Menu, X, ArrowLeft, Move, ZoomIn, ZoomOut } from "lucide-react";
@@ -250,7 +251,9 @@ export default function TemplateSatu(props: Props) {
     finally { setSaving(false); }
   }, [editedNamaBisnis, editedHeadline, editedSubheadline, editedCtaText, editedAboutJudul, editedAboutDeskripsi, editedAboutKeunggulan, editedLayanan, editedCaraKerja, editedCaraKerjaTitle, editedPaketNama, editedPaketHarga, editedTestimonials, editedFooterTagline, editedFooterCta, editedFooterKontakTitle, editedFooterSosmedTitle, editedFooterDesc, editedCopyright, paketHarga, positions, onContentUpdate, websiteId]);
 
-  const isMob = forceMobile === true;
+  // Layout mobile: ikut prop preview kalau ada, kalau tidak ikut lebar viewport asli
+  // (halaman publik /s/[subdomain] tidak mengirim forceMobile).
+  const isMob = useIsMobile(forceMobile);
   const isDesk = forceMobile === false;
 
   // -- Colors and Theme (Editorial Calm) --
@@ -276,10 +279,13 @@ export default function TemplateSatu(props: Props) {
   const photos = fotoBisnis || [];
   const portfolioPhotos = portofolio || [];
 
+  // Section tanpa isi tidak dirender, link navbar-nya ikut hilang (hero selalu ada).
+  const hasAbout = !!(editedAboutJudul.trim() || editedAboutDeskripsi.trim() || editedAboutKeunggulan.some((k) => k.trim()));
+
   // Dynamic Navbar
   const navItems = [
     { label: "Beranda", href: "#beranda" },
-    { label: "Tentang", href: "#tentang" },
+    hasAbout && { label: "Tentang", href: "#tentang" },
     editedLayanan.length > 0 && { label: "Layanan", href: "#layanan" },
     plans.length > 0 && { label: "Harga", href: "#harga" },
     portfolioPhotos.length > 0 && { label: "Portofolio", href: "#portofolio" },
@@ -376,6 +382,8 @@ export default function TemplateSatu(props: Props) {
       <div className={`max-w-7xl mx-auto px-4 md:px-6`}><div className={`w-full border-t ${hairline}`}></div></div>
 
       {/* ── Tentang Kami ── */}
+      {/* Kosong → section hilang (link navbar ikut hilang). */}
+      {hasAbout && (
       <section id="tentang" className={`${isMob ? "py-20" : isDesk ? "py-32" : "py-20 md:py-32"}`}>
         <div className={`max-w-7xl mx-auto ${isMob ? "px-4" : isDesk ? "px-6" : "px-4 md:px-6"}`}>
           {photos.length > 0 ? (
@@ -425,6 +433,7 @@ export default function TemplateSatu(props: Props) {
           )}
         </div>
       </section>
+      )}
 
       <div className={`max-w-7xl mx-auto px-4 md:px-6`}><div className={`w-full border-t ${hairline}`}></div></div>
 

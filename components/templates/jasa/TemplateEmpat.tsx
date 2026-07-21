@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useIsMobile } from "@/components/ui/useIsMobile";
 import type { TemplateData, KeahlianItem } from "@/types";
 import { EditableText } from "@/components/ui/EditableText";
+import { SlotImage } from "@/components/ui/SlotImage";
 import { useTemplateEditor } from "./useTemplateEditor";
 import { SaveBar, Toast, EditBanner, Lightbox, Stars } from "./TemplateShared";
 import { ArrowUpRight, ArrowRight, Menu, X } from "lucide-react";
@@ -40,6 +42,7 @@ export default function TemplateEmpat(props: Props) {
     fotoBisnis = [],
     portofolio = [],
     caraKerja = DEFAULT_CARA_KERJA,
+    imagePositions,
     caraKerjaTitle = "Cara Kerja",
     forceMobile,
     isEditable = false,
@@ -49,16 +52,18 @@ export default function TemplateEmpat(props: Props) {
   } = props;
 
   const em = isEditMode;
-  const { s, patch, hasChanges, saving, toast, handleSave } = useTemplateEditor({
+  const { s, patch, setImgPos, hasChanges, saving, toast, handleSave } = useTemplateEditor({
     namaBisnis, hero, about, layanan, caraKerja, caraKerjaTitle,
-    testimonials: testimonialPlaceholder, paketHarga, footer,
+    testimonials: testimonialPlaceholder, paketHarga, footer, imagePositions,
     isEditMode: em, onContentUpdate, websiteId,
   });
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [lightbox, setLightbox] = useState<number | null>(null);
 
-  const isMob = forceMobile === true;
+  // Layout mobile: ikut prop preview kalau ada, kalau tidak ikut lebar viewport asli
+  // (halaman publik /s/[subdomain] tidak mengirim forceMobile).
+  const isMob = useIsMobile(forceMobile);
   const isDesk = forceMobile === false;
 
   const isDark = warna.tema === "dark";
@@ -77,8 +82,11 @@ export default function TemplateEmpat(props: Props) {
   const plans = paketHarga && paketHarga.length > 0 ? paketHarga : [];
   const skills = (keahlian || []) as KeahlianItem[];
 
+  // Section tanpa isi tidak dirender, link navbar-nya ikut hilang (hero selalu ada).
+  const hasAbout = !!(s.aboutJudul.trim() || s.aboutDeskripsi.trim() || s.aboutKeunggulan.some((k) => k.trim()));
+
   const navItems = [
-    { label: "Tentang", href: "#tentang" },
+    hasAbout && { label: "Tentang", href: "#tentang" },
     s.layanan.length > 0 && { label: "Layanan", href: "#layanan" },
     gallery.length > 0 && { label: "Galeri", href: "#galeri" },
     plans.length > 0 && { label: "Harga", href: "#harga" },
@@ -173,11 +181,15 @@ export default function TemplateEmpat(props: Props) {
       {/* Hero photo full-bleed (if any) */}
       {photos.length > 0 && (
         <div className={`border-b ${lineStrong}`}>
-          <img src={photos[0]} alt={namaBisnis} className={`w-full object-cover ${isMob ? "h-[240px]" : "h-[440px]"}`} loading="lazy" />
+          <div className={`relative w-full overflow-hidden ${isMob ? "h-[240px]" : "h-[440px]"}`}>
+            <SlotImage id="hero" src={photos[0]} alt={namaBisnis} em={em} positions={s.imagePositions} setPos={setImgPos} priority />
+          </div>
         </div>
       )}
 
       {/* Tentang — inverted block */}
+      {/* Kosong → section hilang (link navbar ikut hilang). */}
+      {hasAbout && (
       <section id="tentang" className={`${invBg} text-white`}>
         <div className={`max-w-6xl mx-auto ${px} ${isMob ? "py-16" : "py-24"}`}>
           <Label n="02" dark>Tentang Kami</Label>
@@ -199,6 +211,7 @@ export default function TemplateEmpat(props: Props) {
           </div>
         </div>
       </section>
+      )}
 
       {/* Layanan — big numbered rows */}
       {s.layanan.length > 0 && (
@@ -284,10 +297,16 @@ export default function TemplateEmpat(props: Props) {
             <Label n="06">Portofolio</Label>
             <div className={`grid ${isMob ? "grid-cols-2 gap-2" : "grid-cols-3 gap-2"}`}>
               {gallery.map((src, i) => (
-                <button key={i} type="button" onClick={() => setLightbox(i)} className="overflow-hidden aspect-square cursor-pointer group relative">
-                  <img src={src} alt={`Portofolio ${i + 1}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
-                  <span className="absolute top-3 left-3 font-mono text-[12px] text-white mix-blend-difference">{String(i + 1).padStart(2, "0")}</span>
-                </button>
+                <div key={i} className="overflow-hidden aspect-square group relative">
+                  {em ? (
+                    <SlotImage id={"galeri" + i} src={src} alt={`Portofolio ${i + 1}`} em positions={s.imagePositions} setPos={setImgPos} />
+                  ) : (
+                    <button type="button" onClick={() => setLightbox(i)} className="w-full h-full cursor-pointer">
+                      <SlotImage id={"galeri" + i} src={src} alt={`Portofolio ${i + 1}`} em={false} positions={s.imagePositions} setPos={setImgPos} />
+                    </button>
+                  )}
+                  <span className="absolute top-3 left-3 font-mono text-[12px] text-white mix-blend-difference pointer-events-none">{String(i + 1).padStart(2, "0")}</span>
+                </div>
               ))}
             </div>
           </div>

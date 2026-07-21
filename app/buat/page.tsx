@@ -2,8 +2,9 @@
 
 import { useState, useCallback, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { TemplateData, FormData, PaketHarga, ProyekPortofolio, KeahlianItem, PengalamanItem } from "@/types";
+import type { TemplateData, FormData, PaketHarga, ProyekPortofolio, KeahlianItem, PengalamanItem, ProdukItem } from "@/types";
 import { getTemplateComponent, getTemplateKategori } from "@/lib/templateRegistry";
+import { getPhotoSlots, getTemaTerkunci, usesProdukBuilder } from "@/lib/templates";
 import { createClient } from "@/lib/supabase";
 import { convertToWebP } from "@/lib/imageUtils";
 import { uploadAsset } from "@/lib/uploadAsset";
@@ -95,10 +96,10 @@ const PROFESI_OPTIONS = [
 const INITIAL_FORM: FormData = {
   namaBisnis: "", namaPanggilan: "", tagline: "", kategoriJasa: "", lokasi: "", nomorWhatsApp: "",
   telepon: "", email: "", instagram: "", x_twitter: "", tiktok: "", linkedin: "",
-  keunggulan: "", layananSpesifik: [], keahlianList: [], usia: [], statusKeluarga: [], pekerjaan: [], gayaHidup: [], paketHarga: [],
+  keunggulan: "", layananSpesifik: [], keahlianList: [], usia: [], statusKeluarga: [], pekerjaan: [], gayaHidup: [], paketHarga: [], produkList: [],
   proyekPortofolio: [],
   pengalaman: [],
-  tema: "", primaryColor: "#4f46e5", logo: "", fotoBisnis: [], portofolio: [],
+  tema: "", primaryColor: "#4f46e5", logo: "", fotoBisnis: [], portofolio: [], portofolioJudul: [],
 };
 const inputClass = "w-full bg-zinc-900/80 border border-zinc-800 rounded-xl px-4 py-3 text-[13px] text-zinc-100 placeholder:text-zinc-600 placeholder:italic focus:outline-none focus:ring-1 focus:ring-zinc-600 focus:border-zinc-600 transition-all duration-200";
 // Format gambar yang diterima: PNG, JPG/JPEG, SVG. Non-SVG auto-convert ke WebP saat upload.
@@ -106,6 +107,30 @@ const IMG_ACCEPT = "image/png,image/jpeg,image/svg+xml,.png,.jpg,.jpeg,.svg";
 const MAX_PORTOFOLIO = 8;
 const EMPTY_PAKET: PaketHarga = { namaPaket: "", harga: "", fitur: [], isPopuler: false };
 const EMPTY_PROYEK = (): ProyekPortofolio => ({ namaProyek: "", kategori: "", masalah: "", peran: "", solusi: "", hasil: "", foto: "" });
+const EMPTY_PRODUK = (): ProdukItem => ({ nama: "", deskripsi: "", harga: "", foto: "" });
+// Saran nama produk untuk usaha tani/ternak desa (builder produk peternakan-001).
+const PRODUK_SUGGESTIONS = [
+  // Ternak hidup
+  "Sapi", "Sapi Potong", "Sapi Perah", "Anakan Sapi (Pedet)", "Kambing", "Kambing Etawa", "Domba",
+  // Hewan kurban / aqiqah (dijual musiman, mis. di pinggir jalan jelang Iduladha)
+  "Sapi Kurban", "Kambing Kurban", "Domba Kurban", "Hewan Kurban", "Sapi Aqiqah", "Kambing Aqiqah",
+  "Ayam Kampung", "Ayam Broiler", "Ayam Petelur", "Bebek", "Itik", "Puyuh", "Kalkun", "Angsa",
+  "Kelinci", "DOC (Bibit Ayam)", "Bibit Bebek",
+  // Telur
+  "Telur Ayam", "Telur Ayam Kampung", "Telur Omega-3", "Telur Bebek", "Telur Asin", "Telur Puyuh",
+  // Daging & olahan
+  "Daging Sapi", "Daging Kambing", "Daging Ayam", "Daging Bebek", "Karkas Ayam",
+  "Sosis & Bakso Daging", "Abon", "Dendeng",
+  // Susu
+  "Susu Sapi Segar", "Susu Kambing Etawa", "Yogurt", "Keju",
+  // Ikan
+  "Ikan Lele", "Ikan Nila", "Ikan Gurame", "Ikan Mas", "Ikan Patin", "Udang", "Ikan Asap", "Bibit Ikan",
+  // Hasil tani
+  "Beras", "Beras Organik", "Jagung", "Sayur Organik", "Cabai", "Tomat", "Buah Segar",
+  "Madu Murni", "Kopi", "Kelapa",
+  // Sarana
+  "Pupuk Organik", "Pupuk Kandang", "Pakan Ternak", "Bibit Tanaman",
+];
 const EMPTY_KEAHLIAN = (): KeahlianItem => ({ nama: "", deskripsi: "" });
 const COUNTRY_CODES = [
   { code: "+62", country: "Indonesia", flag: "🇮🇩" },
@@ -232,6 +257,7 @@ function BuatContent() {
   const [showWaDropdown, setShowWaDropdown] = useState(false);
   const [formMode, setFormMode] = useState<"jasa" | "portfolio">("jasa");
   const [proyekFotoFiles, setProyekFotoFiles] = useState<(File | null)[]>([]);
+  const [produkFotoFiles, setProdukFotoFiles] = useState<(File | null)[]>([]);
 
   // File objects store — keeps actual File references for reliable upload
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -240,12 +266,12 @@ function BuatContent() {
 
   const [kategoriSuggestions, setKategoriSuggestions] = useState<string[]>([]);
   const [layananOptions, setLayananOptions] = useState<string[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('jasa-002');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('jasa-001');
   const TemplateComponent = getTemplateComponent(selectedTemplateId);
 
   useEffect(() => {
     const selectedKategori = typeof window !== 'undefined' ? safeStorage.get("selected_kategori") : null;
-    const tplId = typeof window !== 'undefined' ? (safeStorage.get("selected_template") || 'jasa-002') : 'jasa-002';
+    const tplId = typeof window !== 'undefined' ? (safeStorage.get("selected_template") || 'jasa-001') : 'jasa-001';
     setSelectedTemplateId(tplId);
     // Semua template kategori 'personal' (personal-001/002/003) pakai formulir portofolio.
     setFormMode(getTemplateKategori(tplId) === 'personal' ? 'portfolio' : 'jasa');
@@ -286,6 +312,54 @@ function BuatContent() {
         "Tersedia untuk Souvenir Pernikahan", "Tersedia untuk Souvenir Perusahaan",
         "Kolaborasi & Reseller", "Open Dropship"
       ]);
+    } else if (selectedKategori === "peternakan") {
+      setKategoriSuggestions([
+        // Peternakan unggas
+        "Peternakan Ayam Petelur", "Peternakan Ayam Broiler", "Peternakan Ayam Kampung", "Peternakan Ayam Organik",
+        "Peternakan Bebek & Itik", "Peternakan Puyuh", "Peternakan Kalkun", "Peternakan Angsa",
+        "Penetasan Telur (Hatchery)",
+        // Produk telur
+        "Produksi Telur Ayam", "Produksi Telur Omega-3", "Produksi Telur Bebek & Telur Asin",
+        "Produksi Telur Puyuh", "Produksi Telur Ayam Organik",
+        // Peternakan ruminansia & besar
+        "Peternakan Sapi Perah", "Peternakan Sapi Potong", "Penggemukan Sapi", "Peternakan Kerbau",
+        "Peternakan Kambing Perah", "Peternakan Kambing & Domba", "Peternakan Babi", "Peternakan Kuda",
+        // Ternak kecil & lain
+        "Peternakan Kelinci", "Peternakan Lebah Madu", "Budidaya Cacing", "Budidaya Jangkrik",
+        "Peternakan Ulat Hongkong", "Peternakan Burung Kicau", "Peternakan Reptil",
+        // Perikanan air tawar
+        "Budidaya Ikan Lele", "Budidaya Ikan Nila", "Budidaya Ikan Nila Merah", "Budidaya Ikan Gurame",
+        "Budidaya Ikan Mas", "Budidaya Ikan Patin", "Budidaya Ikan Bawal", "Budidaya Ikan Mujair",
+        "Budidaya Ikan Gabus", "Budidaya Ikan Bandeng", "Budidaya Ikan Baung", "Budidaya Ikan Tawes",
+        "Budidaya Ikan Nilem", "Budidaya Ikan Sepat", "Budidaya Ikan Betutu", "Budidaya Ikan Toman",
+        "Budidaya Belut", "Budidaya Sidat", "Budidaya Ikan Sidat",
+        // Perikanan air laut & payau
+        "Budidaya Ikan Kerapu", "Budidaya Ikan Kakap", "Budidaya Ikan Bandeng Tambak", "Budidaya Udang Vaname",
+        "Budidaya Udang Windu", "Budidaya Udang & Tambak", "Budidaya Lobster", "Budidaya Kepiting & Rajungan",
+        "Budidaya Kerang & Tiram", "Budidaya Rumput Laut",
+        // Ikan hias
+        "Budidaya Ikan Hias", "Budidaya Ikan Koi", "Budidaya Ikan Cupang", "Budidaya Ikan Arwana",
+        "Budidaya Ikan Louhan", "Budidaya Ikan Guppy", "Budidaya Ikan Mas Koki", "Budidaya Ikan Discus",
+        // Pertanian pangan & hortikultura
+        "Pertanian Padi & Sawah", "Pertanian Jagung", "Pertanian Kedelai & Kacang", "Pertanian Umbi (Singkong/Ubi)",
+        "Pertanian Sayur Organik", "Pertanian Buah", "Pertanian Cabai & Rempah", "Budidaya Jamur",
+        "Hidroponik", "Aquaponik", "Pembibitan Tanaman", "Tanaman Hias & Bunga",
+        // Perkebunan
+        "Perkebunan Kopi", "Perkebunan Teh", "Perkebunan Kakao (Cokelat)", "Perkebunan Kelapa Sawit",
+        "Perkebunan Kelapa", "Perkebunan Karet", "Perkebunan Tebu", "Perkebunan Cengkeh",
+        "Perkebunan Lada", "Perkebunan Vanili", "Perkebunan Pala", "Perkebunan Kelapa Kopyor",
+        "Perkebunan Pisang", "Perkebunan Nanas", "Perkebunan Mangga", "Perkebunan Jeruk",
+        "Perkebunan Naga (Buah Naga)", "Perkebunan Alpukat", "Perkebunan Durian",
+        // Pendukung & lainnya
+        "Toko Pakan Ternak", "Toko Bibit & Benih", "Toko Saprotan (Sarana Pertanian)",
+        "Pupuk Organik & Kompos", "Agrowisata", "Kelompok Tani / Gapoktan", "Penggilingan Padi"
+      ]);
+      setLayananOptions([
+        "Jual Hasil Panen Segar", "Produk Ternak (Daging/Susu/Telur)", "Antar Langsung ke Rumah", "Pesan via WhatsApp",
+        "Grosir & Eceran", "Paket Langganan Mingguan", "Paket Langganan Bulanan", "Bibit & Benih",
+        "Pakan Ternak", "Konsultasi Budidaya", "Kunjungan ke Lokasi/Agrowisata", "Reseller & Dropship",
+        "Frozen & Tahan Lama", "Panen Sesuai Pesanan (Pre-Order)", "Produk Organik Bersertifikat", "Pengiriman ke Luar Kota"
+      ]);
     } else if (selectedKategori === "personal") {
       setKategoriSuggestions([
         "Freelancer", "Desainer Grafis", "Web Developer", "Fotografer Pribadi", 
@@ -323,7 +397,7 @@ function BuatContent() {
 
   useEffect(() => {
     const selectedKategori = typeof window !== 'undefined' ? safeStorage.get("selected_kategori") : null;
-    if (selectedKategori === "fnb" || selectedKategori === "kreatif") return;
+    if (selectedKategori === "fnb" || selectedKategori === "kreatif" || selectedKategori === "peternakan") return;
 
     const kat = formData.kategoriJasa.toLowerCase();
     const isFoto = kat.includes("fotografi") || kat.includes("foto");
@@ -430,8 +504,12 @@ function BuatContent() {
       if (!Array.isArray(loadedFormData.keahlianList)) loadedFormData.keahlianList = [];
       if (!Array.isArray(loadedFormData.proyekPortofolio)) loadedFormData.proyekPortofolio = [];
       if (!Array.isArray(loadedFormData.pengalaman)) loadedFormData.pengalaman = [];
+      if (!Array.isArray(loadedFormData.portofolioJudul)) loadedFormData.portofolioJudul = [];
+      if (!Array.isArray(loadedFormData.produkList)) loadedFormData.produkList = [];
 
       setFormData(loadedFormData);
+      // Slot file foto produk sejajar jumlah produk (semua null; foto lama sudah berupa URL).
+      setProdukFotoFiles(new Array(loadedFormData.produkList.length).fill(null));
 
       setTemplateData({
         ...data.generated_content,
@@ -444,6 +522,7 @@ function BuatContent() {
         paketHarga: data.generated_content?.paketHarga || loadedFormData.paketHarga || [],
         logo: data.logo_url || "",
         portofolio: data.foto_urls || [],
+        portofolioJudul: data.generated_content?.portofolioJudul || [],
         fotoBisnis: data.generated_content?.fotoBisnis || [],
       });
       setOriginalContent(data.generated_content);
@@ -495,11 +574,17 @@ function BuatContent() {
       const supabase = createClient();
 
       if (templateData) {
-        const cleanFormData = {
-          ...formData,
-          logo: templateData.logo || formData.logo,
-          portofolio: templateData.portofolio || formData.portofolio,
-        };
+        // Pakai __formData bersih yang sudah tersimpan saat generate/simpan (URL sudah
+        // ter-upload) supaya foto produk/fotoBisnis tidak tertimpa blob mati dari state.
+        const { data: cur } = await supabase
+          .from('websites')
+          .select('generated_content')
+          .eq('id', websiteId)
+          .single();
+        const storedForm = cur?.generated_content?.__formData;
+        const cleanFormData = storedForm
+          ? { ...storedForm, logo: templateData.logo || storedForm.logo, portofolio: templateData.portofolio || storedForm.portofolio }
+          : { ...formData, logo: templateData.logo || formData.logo, portofolio: templateData.portofolio || formData.portofolio };
         const latestContent = { ...templateData, __formData: cleanFormData };
         const { error: contentError } = await supabase
           .from('websites')
@@ -594,6 +679,41 @@ function BuatContent() {
     }, []
   );
 
+  // Kebutuhan foto template terpilih (lib/templates.ts). null = template belum punya slot bernama.
+  const photoSpec = getPhotoSlots(selectedTemplateId);
+  // Copy formulir menyesuaikan jenis template (jasa vs peternakan/agri) supaya
+  // labelnya relevan — mis. "Kategori Jasa" tidak cocok untuk usaha tani/ternak.
+  const isPeternakan = getTemplateKategori(selectedTemplateId) === "peternakan";
+  // Template ini pakai builder produk manual (foto+nama+deskripsi+harga) di step 2.
+  const usesBuilder = usesProdukBuilder(selectedTemplateId);
+  const cpy = isPeternakan
+    ? {
+        namaLabel: "Nama Usaha",
+        namaPlaceholder: "contoh: Tani Makmur Farm",
+        taglinePlaceholder: "contoh: Hasil Tani & Ternak Segar Langsung dari Kebun",
+        kategoriLabel: "Jenis Usaha",
+        kategoriPlaceholder: "contoh: Peternakan Ayam Petelur",
+        keunggulanPlaceholder: "contoh: Organik tanpa bahan kimia, panen tiap hari, antar langsung ke rumah...",
+        layananLabel: "Produk & Layanan",
+      }
+    : {
+        namaLabel: "Nama Bisnis",
+        namaPlaceholder: "contoh: Sejuk Prima AC",
+        taglinePlaceholder: "contoh: Solusi AC Terpercaya untuk Kenyamanan Anda",
+        kategoriLabel: "Kategori Jasa",
+        kategoriPlaceholder: "contoh: Servis AC",
+        keunggulanPlaceholder: "contoh: Berpengalaman 10 tahun, garansi 30 hari, teknisi bersertifikat...",
+        layananLabel: "Layanan Spesifik",
+      };
+  // Template berpalet terkunci (mis. jasa-002 "Neon" yang selalu gelap): pilihan
+  // Nuansa Desain disembunyikan dan temanya diisi otomatis.
+  const temaTerkunci = getTemaTerkunci(selectedTemplateId);
+  const maxPortofolio = photoSpec?.portofolio?.max ?? MAX_PORTOFOLIO;
+
+  useEffect(() => {
+    if (temaTerkunci && formData.tema !== temaTerkunci) updateField("tema", temaTerkunci);
+  }, [temaTerkunci, formData.tema, updateField]);
+
   const canProceed = (): boolean => {
     if (step === 0) {
       if (formMode === "portfolio")
@@ -603,8 +723,13 @@ function BuatContent() {
     if (step === 1) {
       if (formMode === "portfolio")
         return formData.keahlianList.some((k) => k.nama.trim()) && formData.proyekPortofolio.some((p) => !!p.foto);
+      // Template dengan builder produk: wajib minimal 1 produk berisi nama (produk
+      // menggantikan input "Layanan Spesifik"); demografi target tetap wajib.
+      const produkOk = usesBuilder
+        ? formData.produkList.some((pr) => pr.nama.trim())
+        : formData.layananSpesifik.length > 0;
       return !!(
-        formData.layananSpesifik.length > 0 &&
+        produkOk &&
         formData.keunggulan.trim() &&
         formData.usia.length > 0 &&
         formData.statusKeluarga.length > 0 &&
@@ -614,7 +739,17 @@ function BuatContent() {
     }
     // Mode portfolio: Nuansa (tema) disembunyikan & tidak dipakai template personal,
     // jadi step 3 tidak mensyaratkannya. Mode jasa tetap wajib pilih tema.
-    if (step === 2) return formMode === "portfolio" ? true : !!formData.tema;
+    if (step === 2) {
+      // Template dengan slot foto bernama: semua slot wajib harus terisi,
+      // plus minimal sekian foto produk bila template memintanya.
+      if (photoSpec) {
+        const slotOk = photoSpec.slots.every((sl) => !sl.wajib || !!formData.fotoBisnis[sl.idx]);
+        const minPorto = photoSpec.portofolio?.min ?? 0;
+        const portoOk = formData.portofolio.filter(Boolean).length >= minPorto;
+        return slotOk && portoOk && (formMode === "portfolio" || !!temaTerkunci || !!formData.tema);
+      }
+      return formMode === "portfolio" || !!temaTerkunci ? true : !!formData.tema;
+    }
     return false;
   };
 
@@ -633,7 +768,7 @@ function BuatContent() {
     let fileArray = Array.from(files);
     // Batasi portofolio maksimal MAX_PORTOFOLIO slot
     if (field === "portofolio") {
-      const sisa = MAX_PORTOFOLIO - formData.portofolio.length;
+      const sisa = maxPortofolio - formData.portofolio.length;
       if (sisa <= 0) return;
       fileArray = fileArray.slice(0, sisa);
     }
@@ -661,10 +796,24 @@ function BuatContent() {
     setFotoBisnisFiles((prev) => { const next = [...prev]; if (next[index] !== undefined) next[index] = null; return next; });
     setFormData((prev) => { const arr = [...prev.fotoBisnis]; if (arr[index] !== undefined) arr[index] = ""; return { ...prev, fotoBisnis: arr }; });
   };
+  // Judul foto galeri — index sejajar dengan formData.portofolio.
+  const setPortofolioJudul = (index: number, value: string) => {
+    setFormData((prev) => {
+      const arr = [...(prev.portofolioJudul || [])];
+      while (arr.length <= index) arr.push("");
+      arr[index] = value;
+      return { ...prev, portofolioJudul: arr };
+    });
+  };
+
   const handlePhotoRemove = (index: number, field: "fotoBisnis" | "portofolio") => {
     URL.revokeObjectURL(formData[field][index]);
     if (field === "fotoBisnis") setFotoBisnisFiles(prev => prev.filter((_, i) => i !== index));
-    else setPortofolioFiles(prev => prev.filter((_, i) => i !== index));
+    else {
+      setPortofolioFiles(prev => prev.filter((_, i) => i !== index));
+      // Judul ikut terhapus supaya index judul tetap sejajar dengan foto.
+      setFormData((prev) => ({ ...prev, portofolioJudul: (prev.portofolioJudul || []).filter((_, i) => i !== index) }));
+    }
     updateField(field, formData[field].filter((_, i) => i !== index));
   };
   const handleDrop = (e: React.DragEvent, type: "logo" | "fotoBisnis" | "portofolio") => {
@@ -736,6 +885,26 @@ function BuatContent() {
     if (formData.proyekPortofolio[index]?.foto) URL.revokeObjectURL(formData.proyekPortofolio[index].foto);
     setProyekFotoFiles((prev) => { const next = [...prev]; next[index] = null; return next; });
     updateProyek(index, "foto", "");
+  };
+
+  /* ── Produk Builder Handlers (template peternakan/agri) ── */
+  const addProduk = () => {
+    updateField("produkList", [...formData.produkList, EMPTY_PRODUK()]);
+    setProdukFotoFiles((prev) => [...prev, null]);
+  };
+  const removeProduk = (index: number) => {
+    if (formData.produkList[index]?.foto?.startsWith("blob:")) URL.revokeObjectURL(formData.produkList[index].foto);
+    updateField("produkList", formData.produkList.filter((_, i) => i !== index));
+    setProdukFotoFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+  const updateProduk = (index: number, key: keyof ProdukItem, value: string) => {
+    updateField("produkList", formData.produkList.map((pr, i) => i === index ? { ...pr, [key]: value } : pr));
+  };
+  const handleProdukFoto = (index: number, file: File) => {
+    const old = formData.produkList[index]?.foto;
+    if (old?.startsWith("blob:")) URL.revokeObjectURL(old);
+    setProdukFotoFiles((prev) => { const next = [...prev]; while (next.length <= index) next.push(null); next[index] = file; return next; });
+    updateProduk(index, "foto", URL.createObjectURL(file));
   };
 
   const handleDiscardAndBack = async () => {
@@ -849,13 +1018,30 @@ function BuatContent() {
       });
       const fotoBisnisUrls = await Promise.all(fotoBisnisUploadPromises);
 
+      // Builder produk (template peternakan): upload foto tiap produk, lalu produk
+      // (nama+deskripsi+harga) & fotonya jadi sumber section Produk — bukan hasil AI.
+      const produkUrls = usesBuilder ? await Promise.all(formData.produkList.map(async (pr, i) => {
+        const f = produkFotoFiles[i] || null;
+        if (pr.foto && pr.foto.startsWith('blob:') && f) { const opt = await convertToWebP(f, 0.85).catch(() => f); return await uploadFile(opt, 'portofolio'); }
+        if (pr.foto && !pr.foto.startsWith('blob:')) return pr.foto;
+        return "";
+      })) : [];
+      const produkTerisi = usesBuilder
+        ? formData.produkList.map((pr, i) => ({ pr, url: produkUrls[i] || "" })).filter((e) => e.pr.nama.trim())
+        : [];
+      const produkLayanan = produkTerisi.map((e) => ({ nama: e.pr.nama, deskripsi: e.pr.deskripsi, harga: e.pr.harga }));
+      const produkFoto = produkTerisi.map((e) => e.url);
+      const produkListClean = formData.produkList.map((pr, i) => ({ ...pr, foto: produkUrls[i] ?? pr.foto }));
+
       // Call API — mode portfolio kirim hanya proyek berfoto (urut sejajar dgn portofolioUrls)
       // Keahlian terisi (nama wajib). Dikirim utuh (nama+deskripsi) supaya AI bisa
       // meringkas deskripsi yang ditulis bebas-panjang oleh user jadi padat.
       const keahlianTerisi = formData.keahlianList.filter((k) => k.nama.trim());
       const apiBody = formMode === "portfolio"
         ? { ...formData, proyekPortofolio: proyekWithFoto.map((e) => e.p), layananSpesifik: keahlianTerisi.map((k) => k.nama), keahlian: keahlianTerisi }
-        : formData;
+        : usesBuilder
+          ? { ...formData, layananSpesifik: produkLayanan.map((l) => l.nama) }
+          : formData;
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -900,7 +1086,7 @@ function BuatContent() {
       const finalData: TemplateData = {
         hero: aiData.hero || { headline: "", subheadline: "", ctaText: "" },
         about: aiData.about || { judul: "", deskripsi: "", keunggulan: [] },
-        layanan: aiData.layanan || [],
+        layanan: usesBuilder ? produkLayanan : (aiData.layanan || []),
         targetPelanggan: aiData.targetPelanggan || { deskripsi: "", painPoint: "", solusi: "" },
         testimonialPlaceholder: aiData.testimonialPlaceholder || [],
         footer: aiData.footer || { tagline: "", ctaText: "" },
@@ -935,15 +1121,18 @@ function BuatContent() {
         })),
         pengalaman: formData.pengalaman.filter((p) => p.judul.trim()),
         logo: logoUrl,
-        portofolio: portofolioUrls,
+        // Builder produk: foto produk jadi portofolio (sejajar layanan), bukan upload galeri.
+        portofolio: usesBuilder ? produkFoto : portofolioUrls,
+        portofolioJudul: formData.portofolioJudul || [],
         fotoBisnis: fotoBisnisUrls,
       };
+      const portofolioFinal = usesBuilder ? produkFoto : portofolioUrls;
 
       // Save to DB
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 14);
 
-      const templateId = safeStorage.get('selected_template') || 'jasa-002';
+      const templateId = safeStorage.get('selected_template') || 'jasa-001';
 
       let dbData, dbError;
 
@@ -957,8 +1146,8 @@ function BuatContent() {
         deskripsi: formData.tagline || aiData.hero?.subheadline || "",
         kategori: formData.kategoriJasa,
         logo_url: logoUrl,
-        foto_urls: portofolioUrls,
-        generated_content: { ...finalData, __formData: { ...formData, logo: logoUrl, portofolio: portofolioUrls, fotoBisnis: fotoBisnisUrls } },
+        foto_urls: portofolioFinal,
+        generated_content: { ...finalData, __formData: { ...formData, logo: logoUrl, portofolio: portofolioFinal, produkList: produkListClean, fotoBisnis: fotoBisnisUrls } },
         template_id: templateId,
       };
 
@@ -1106,6 +1295,21 @@ function BuatContent() {
         fotoBisnisUrls = templateData.fotoBisnis.filter(u => !u.startsWith('blob:'));
       }
 
+      // Builder produk: upload foto produk & jadikan layanan+portofolio (tanpa foto random).
+      const produkUrls = usesBuilder ? await Promise.all(formData.produkList.map(async (pr, i) => {
+        const f = produkFotoFiles[i] || null;
+        if (pr.foto && pr.foto.startsWith('blob:') && f) { const opt = await convertToWebP(f, 0.85).catch(() => f); return await uploadFile(opt, 'portofolio'); }
+        if (pr.foto && !pr.foto.startsWith('blob:')) return pr.foto;
+        return "";
+      })) : [];
+      const produkTerisi = usesBuilder
+        ? formData.produkList.map((pr, i) => ({ pr, url: produkUrls[i] || "" })).filter((e) => e.pr.nama.trim())
+        : [];
+      const produkLayanan = produkTerisi.map((e) => ({ nama: e.pr.nama, deskripsi: e.pr.deskripsi, harga: e.pr.harga }));
+      const produkFoto = produkTerisi.map((e) => e.url);
+      const produkListClean = formData.produkList.map((pr, i) => ({ ...pr, foto: produkUrls[i] ?? pr.foto }));
+      if (usesBuilder) portofolioUrls = produkFoto;
+
       // Merge current templateData with new formData
       const updatedContent: TemplateData = {
         ...(templateData || ({} as TemplateData)),
@@ -1117,6 +1321,7 @@ function BuatContent() {
         sosmed: { instagram: formData.instagram, tiktok: formData.tiktok, twitter: formData.x_twitter },
         warna: { primary: formData.primaryColor, tema: (formData.tema || "light") as "dark" | "light" },
         paketHarga: formData.paketHarga,
+        ...(usesBuilder ? { layanan: produkLayanan } : {}),
         // Simpan tanpa regenerate AI: pertahankan deskripsi keahlian yang sudah diringkas
         // AI di generate sebelumnya (cocok via nama). Keahlian baru/diedit pakai teks
         // wizard; layout tetap aman karena kartu keahlian dibatasi 3 baris (CSS clamp).
@@ -1127,6 +1332,7 @@ function BuatContent() {
         pengalaman: formData.pengalaman.filter((p) => p.judul.trim()),
         logo: logoUrl,
         portofolio: portofolioUrls,
+        portofolioJudul: formData.portofolioJudul || [],
         fotoBisnis: fotoBisnisUrls,
       };
 
@@ -1135,6 +1341,8 @@ function BuatContent() {
         ...formData,
         logo: logoUrl,
         portofolio: portofolioUrls,
+        portofolioJudul: formData.portofolioJudul || [],
+        produkList: produkListClean,
         fotoBisnis: fotoBisnisUrls,
       };
       const finalDbContent = { ...updatedContent, __formData: cleanFormData };
@@ -1247,17 +1455,17 @@ function BuatContent() {
             {step === 0 && formMode === "jasa" && (
               <>
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Building2 className="w-3 h-3" /> Nama Bisnis</label>
-                  <input id="input-nama-bisnis" type="text" value={formData.namaBisnis} onChange={(e) => updateField("namaBisnis", e.target.value)} placeholder="contoh: Sejuk Prima AC" className={inputClass} />
+                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Building2 className="w-3 h-3" /> {cpy.namaLabel}</label>
+                  <input id="input-nama-bisnis" type="text" value={formData.namaBisnis} onChange={(e) => updateField("namaBisnis", e.target.value)} placeholder={cpy.namaPlaceholder} className={inputClass} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Type className="w-3 h-3" /> Tagline</label>
-                  <input id="input-tagline" type="text" value={formData.tagline} onChange={(e) => updateField("tagline", e.target.value)} placeholder="contoh: Solusi AC Terpercaya untuk Kenyamanan Anda" className={inputClass} />
+                  <input id="input-tagline" type="text" value={formData.tagline} onChange={(e) => updateField("tagline", e.target.value)} placeholder={cpy.taglinePlaceholder} className={inputClass} />
                   <p className="text-zinc-600 text-[11px]">Slogan singkat yang menggambarkan bisnis Anda</p>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Award className="w-3 h-3" /> Kategori Jasa</label>
-                  <AutocompleteInput id="input-kategori" value={formData.kategoriJasa} onChange={(v) => updateField("kategoriJasa", v)} suggestions={kategoriSuggestions} placeholder="contoh: Servis AC" />
+                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Award className="w-3 h-3" /> {cpy.kategoriLabel}</label>
+                  <AutocompleteInput id="input-kategori" value={formData.kategoriJasa} onChange={(v) => updateField("kategoriJasa", v)} suggestions={kategoriSuggestions} placeholder={cpy.kategoriPlaceholder} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><MapPin className="w-3 h-3" /> Lokasi / Area</label>
@@ -1458,13 +1666,68 @@ function BuatContent() {
               <>
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><AlignLeft className="w-3 h-3" /> Keunggulan Bisnis</label>
-                  <textarea id="input-keunggulan" value={formData.keunggulan} onChange={(e) => updateField("keunggulan", e.target.value)} placeholder="contoh: Berpengalaman 10 tahun, garansi 30 hari, teknisi bersertifikat..." rows={3} className={`${inputClass} resize-none`} />
+                  <textarea id="input-keunggulan" value={formData.keunggulan} onChange={(e) => updateField("keunggulan", e.target.value)} placeholder={cpy.keunggulanPlaceholder} rows={3} className={`${inputClass} resize-none`} />
                   <p className="text-zinc-600 text-[11px]">Tulis keunggulan unik yang membedakan bisnis Anda</p>
                 </div>
+                {usesBuilder ? (
+                  /* Builder produk manual — foto + nama + deskripsi + harga per produk.
+                     Section Produk template render persis dari sini (tanpa foto random). */
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Award className="w-3 h-3" /> Produk</label>
+                      <button type="button" onClick={addProduk} className="flex items-center gap-1 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer">
+                        <Plus className="w-3 h-3" /> Tambah Produk
+                      </button>
+                    </div>
+                    <p className="text-zinc-600 text-[11px] -mt-1">Tiap produk punya foto, nama, deskripsi, dan harga sendiri. Kalau kosong, section Produk tidak ditampilkan.</p>
+
+                    {formData.produkList.length === 0 && (
+                      <button type="button" onClick={addProduk} className="w-full border-2 border-dashed border-zinc-800 rounded-xl py-6 flex flex-col items-center gap-1.5 text-zinc-500 hover:border-zinc-700 hover:text-zinc-400 transition-colors cursor-pointer">
+                        <Plus className="w-5 h-5" />
+                        <span className="text-[12px] font-medium">Tambah Produk Pertama</span>
+                      </button>
+                    )}
+
+                    {formData.produkList.map((pr, idx) => (
+                      <div key={idx} className="border border-zinc-800 bg-zinc-900/60 rounded-xl p-3 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Produk {idx + 1}</span>
+                          <button type="button" onClick={() => removeProduk(idx)} aria-label="Hapus produk" className="p-1 rounded-md hover:bg-red-900/30 text-zinc-600 hover:text-red-400 transition-colors cursor-pointer">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="flex gap-3">
+                          {/* Foto produk */}
+                          {pr.foto ? (
+                            <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-zinc-700 flex-shrink-0 group/pf">
+                              <img src={pr.foto} alt={pr.nama || `Produk ${idx + 1}`} className="w-full h-full object-cover" />
+                              <label className="absolute inset-0 bg-black/50 opacity-0 group-hover/pf:opacity-100 flex items-center justify-center cursor-pointer transition-opacity">
+                                <span className="text-[10px] text-white font-medium">Ganti</span>
+                                <input type="file" accept={IMG_ACCEPT} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleProdukFoto(idx, f); e.target.value = ""; }} />
+                              </label>
+                            </div>
+                          ) : (
+                            <label className="w-20 h-20 rounded-lg border-2 border-dashed border-zinc-800 flex flex-col items-center justify-center gap-1 flex-shrink-0 cursor-pointer hover:border-indigo-500/50 hover:bg-zinc-800/40 transition-colors text-center">
+                              <Camera className="w-4 h-4 text-zinc-500" />
+                              <span className="text-[9px] text-zinc-500">Foto</span>
+                              <input type="file" accept={IMG_ACCEPT} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleProdukFoto(idx, f); e.target.value = ""; }} />
+                            </label>
+                          )}
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <AutocompleteInput id={`produk-nama-${idx}`} value={pr.nama} onChange={(v) => updateProduk(idx, "nama", v)} suggestions={PRODUK_SUGGESTIONS} placeholder="Nama produk, mis. Telur Ayam" />
+                            <input type="text" maxLength={40} value={pr.harga} onChange={(e) => updateProduk(idx, "harga", e.target.value)} placeholder="Harga, mis. Rp 28.000 / kg (opsional)" className={`${inputClass} !py-2 !text-[12px]`} />
+                          </div>
+                        </div>
+                        <textarea value={pr.deskripsi} onChange={(e) => updateProduk(idx, "deskripsi", e.target.value)} placeholder="Deskripsi singkat produk..." rows={2} className={`${inputClass} !py-2 !text-[12px] resize-none`} />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Award className="w-3 h-3" /> Layanan Spesifik</label>
+                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Award className="w-3 h-3" /> {cpy.layananLabel}</label>
                   <MultiSelectDropdown id="input-layanan" value={formData.layananSpesifik} onChange={(val) => updateField("layananSpesifik", val)} options={layananOptions} placeholder="Pilih layanan..." />
                 </div>
+                )}
                 <div className="space-y-3 pt-2">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Target className="w-3 h-3" /> Target Pelanggan</label>
                   <div className="grid grid-cols-2 gap-3">
@@ -1721,9 +1984,10 @@ function BuatContent() {
             {/* ═══ STEP 3 ═══ */}
             {step === 2 && (
               <>
-                {/* Theme — Nuansa (Dark/Light) hanya untuk template jasa. Template personal
-                    (mode portfolio) punya palet sendiri, jadi pilihan ini disembunyikan. */}
-                {formMode !== "portfolio" && (
+                {/* Theme — Nuansa (Dark/Light) hanya untuk template jasa berpalet bebas.
+                    Template personal (mode portfolio) dan template berpalet terkunci
+                    (mis. jasa-002 "Neon" yang selalu gelap) menyembunyikan pilihan ini. */}
+                {formMode !== "portfolio" && !temaTerkunci && (
                 <div className="space-y-2.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Palette className="w-3 h-3" /> Nuansa Desain</label>
                   <div className="grid grid-cols-2 gap-3">
@@ -1804,17 +2068,20 @@ function BuatContent() {
                 </div>
                 )}
 
-                {/* Foto Pribadi — satu slot, dipakai untuk hero & profil (mode portfolio) */}
-                {formMode === "portfolio" ? (
+                {/* Slot foto bernama — dipakai mode portfolio ATAU template yang
+                    mendaftarkan kebutuhan fotonya di TEMPLATE_PHOTO_SLOTS (lib/templates.ts). */}
+                {formMode === "portfolio" || (photoSpec && photoSpec.slots.length > 0) ? (
                 <div className="space-y-2.5">
-                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Camera className="w-3 h-3" /> Foto Pribadi</label>
-                  <p className="text-zinc-600 text-[10px] -mt-1">Foto Hero sebaiknya tanpa latar belakang (PNG transparan). Foto lain bebas (akan dipotong otomatis).</p>
+                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Camera className="w-3 h-3" /> {formMode === "portfolio" ? "Foto Pribadi" : "Foto Website"}</label>
+                  <p className="text-zinc-600 text-[10px] -mt-1">{formMode === "portfolio" ? "Foto Hero sebaiknya tanpa latar belakang (PNG transparan). Foto lain bebas (akan dipotong otomatis)." : "Foto ini mengisi posisi tetap di template pilihan Anda. Bisa digeser & di-zoom nanti saat edit."}</p>
                   <div className="grid grid-cols-2 gap-2.5">
                     {/* Slot foto per template:
                         - personal-002 (brutalist-bento): Hero + 3 foto galeri "About Me" (fotoBisnis[1..3]).
                         - personal-003 (neon-grid): Hero + 4 foto strip section Pengalaman (fotoBisnis[1..4]).
                         - personal lain: Hero + 1 About Me. */}
-                    {(selectedTemplateId === "personal-002"
+                    {(photoSpec
+                      ? photoSpec.slots
+                      : selectedTemplateId === "personal-002"
                       ? [
                           { idx: 0, title: "Foto Hero", hint: "tampil di hero", tip: "Foto utama paling atas website, gambar besar pertama yang dilihat pengunjung." },
                           { idx: 1, title: `Foto "About Me" 1`, hint: "section about me", tip: "Foto pertama di galeri section 'About Me'." },
@@ -1833,12 +2100,14 @@ function BuatContent() {
                           { idx: 0, title: "Foto Hero", hint: "tampil di hero", tip: "Foto utama paling atas website, gambar besar pertama yang dilihat pengunjung." },
                           { idx: 1, title: "Foto About Me", hint: "section tentang", tip: "Foto di bagian 'Tentang Saya', biasanya foto diri yang lebih personal atau formal." },
                         ]
-                    ).map(({ idx, title, hint, tip }) => {
+                    ).map((sl) => {
+                      const { idx, title, hint, tip } = sl;
+                      const wajib = "wajib" in sl && sl.wajib;
                       const url = formData.fotoBisnis[idx];
                       return (
                         <div key={idx} className="space-y-1.5">
                           <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider flex items-center gap-1">
-                            {title}
+                            {title}{wajib && <span className="text-red-400 normal-case">*</span>}
                             <span title={tip} className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-zinc-600 text-zinc-500 text-[8px] cursor-help normal-case">?</span>
                           </p>
                           {url ? (
@@ -1861,7 +2130,7 @@ function BuatContent() {
                     })}
                   </div>
                 </div>
-                ) : selectedTemplateId !== 'jasa-001' ? (
+                ) : selectedTemplateId !== 'jasa-002' ? (
                 <div className="space-y-2.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Camera className="w-3 h-3" /> Foto Bisnis</label>
                   <p className="text-zinc-600 text-[10px] -mt-1">PNG, JPG, atau SVG. Suasana kerja, toko, atau tim Anda</p>
@@ -1893,8 +2162,14 @@ function BuatContent() {
                 </div>
                 ) : null}
 
-                {/* Portofolio: mode portfolio ambil dari foto proyek (step 2), jadi uploader disembunyikan */}
-                {formMode === "portfolio" ? (
+                {/* Portofolio: mode portfolio ambil dari foto proyek (step 2); template builder
+                    ambil dari foto tiap Produk (step 2) — uploader ini disembunyikan. */}
+                {usesBuilder ? (
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Upload className="w-3 h-3" /> Foto Produk</label>
+                  <p className="text-zinc-600 text-[11px] bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">Foto produk diambil otomatis dari daftar <span className="text-indigo-400">Produk</span> di step 2. Tambah/ubah produk di sana.</p>
+                </div>
+                ) : formMode === "portfolio" ? (
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Upload className="w-3 h-3" /> Foto Portofolio</label>
                   <p className="text-zinc-600 text-[11px] bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">Foto portofolio diambil otomatis dari <span className="text-indigo-400">Foto Proyek</span> di step 2. Tambah/ubah proyek di sana.</p>
@@ -1902,25 +2177,50 @@ function BuatContent() {
                 ) : (
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider"><Upload className="w-3 h-3" /> Foto Portofolio</label>
-                    <span className="text-[10px] font-medium text-zinc-500 tabular-nums">{formData.portofolio.length}/{MAX_PORTOFOLIO}</span>
+                    <label className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-400 uppercase tracking-wider">
+                      <Upload className="w-3 h-3" /> {photoSpec?.portofolio?.label ?? "Foto Portofolio"}
+                      {!!photoSpec?.portofolio?.min && <span className="text-red-400">*</span>}
+                    </label>
+                    <span className="text-[10px] font-medium text-zinc-500 tabular-nums">{formData.portofolio.length}/{maxPortofolio}</span>
                   </div>
-                  <p className="text-zinc-600 text-[10px] -mt-1">PNG, JPG, atau SVG. Hasil karya atau proyek yang sudah selesai.</p>
+                  <p className="text-zinc-600 text-[10px] -mt-1">{photoSpec?.portofolio?.hint ?? "PNG, JPG, atau SVG. Hasil karya atau proyek yang sudah selesai."}</p>
                   <input ref={portofolioInputRef} type="file" accept={IMG_ACCEPT} multiple className="hidden"
                     onChange={(e) => { if (e.target.files) handlePhotosSelect(e.target.files, "portofolio"); e.target.value = ""; }} />
-                  {formData.portofolio.length < MAX_PORTOFOLIO && (
+                  {formData.portofolio.length < maxPortofolio && (
                   <div onClick={() => portofolioInputRef.current?.click()} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, "portofolio")}
                     className="border-2 border-dashed border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors group cursor-pointer">
                     <div className="flex flex-col items-center text-center">
                       <div className="w-10 h-10 rounded-xl bg-zinc-800/80 flex items-center justify-center mb-2 group-hover:bg-zinc-700/80 transition-colors">
                         <Upload className="w-4 h-4 text-zinc-500 group-hover:text-zinc-400 transition-colors" />
                       </div>
-                      <p className="text-[12px] text-zinc-300 font-medium mb-0.5">Foto Portofolio</p>
+                      <p className="text-[12px] text-zinc-300 font-medium mb-0.5">{photoSpec?.portofolio?.label ?? "Foto Portofolio"}</p>
                       <p className="text-[10px] text-zinc-600">Seret atau <span className="text-indigo-400">klik untuk upload</span></p>
                     </div>
                   </div>
                   )}
                   {formData.portofolio.length > 0 && (
+                    photoSpec?.portofolio?.judul ? (
+                      /* Template minta judul per foto (mis. jasa-001) — judulnya jadi label kartu galeri. */
+                      <div className="space-y-2">
+                        {formData.portofolio.map((url, i) => (
+                          <div key={i} className="flex items-center gap-2.5 bg-zinc-900/60 border border-zinc-800 rounded-xl p-2">
+                            <img src={url} alt={`Foto ${i + 1}`} className="w-14 h-14 rounded-lg object-cover border border-zinc-800 flex-shrink-0" />
+                            <input
+                              type="text"
+                              value={formData.portofolioJudul?.[i] ?? ""}
+                              onChange={(e) => setPortofolioJudul(i, e.target.value)}
+                              placeholder={photoSpec.portofolio?.judulPlaceholder || "Judul foto"}
+                              maxLength={60}
+                              className="flex-1 min-w-0 bg-zinc-950/60 border border-zinc-800 rounded-lg px-3 py-2 text-[12px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/60"
+                            />
+                            <button type="button" onClick={() => handlePhotoRemove(i, "portofolio")} aria-label="Hapus foto"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-500 hover:text-red-400 hover:bg-red-900/20 transition-colors cursor-pointer flex-shrink-0">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
                     <div className="grid grid-cols-4 gap-2">
                       {formData.portofolio.map((url, i) => (
                         <div key={i} className="relative group/thumb">
@@ -1932,6 +2232,7 @@ function BuatContent() {
                         </div>
                       ))}
                     </div>
+                    )
                   )}
                 </div>
                 )}

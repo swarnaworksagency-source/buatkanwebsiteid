@@ -12,9 +12,12 @@ const TemplateSatu = dynamic(() => import("@/components/templates/jasa/TemplateS
 const TemplateDua = dynamic(() => import("@/components/templates/jasa/TemplateDua"));
 const TemplateTiga = dynamic(() => import("@/components/templates/jasa/TemplateTiga"));
 const TemplateEmpat = dynamic(() => import("@/components/templates/jasa/TemplateEmpat"));
+const TemplateLima = dynamic(() => import("@/components/templates/jasa/TemplateLima"));
 const TemplatePersonalSatu = dynamic(() => import("@/components/templates/personal/neo-brutalist"));
 const TemplatePersonalDua = dynamic(() => import("@/components/templates/personal/brutalist-bento"));
 const TemplatePersonalTiga = dynamic(() => import("@/components/templates/personal/neon-grid"));
+const TemplateAgriSatu = dynamic(() => import("@/components/templates/peternakan/TemplateAgriSatu"));
+const TemplateAgriDua = dynamic(() => import("@/components/templates/peternakan/TemplateAgriDua"));
 
 interface TemplateProps extends Partial<TemplateData> {
     forceMobile?: boolean;
@@ -28,18 +31,21 @@ interface TemplateProps extends Partial<TemplateData> {
 type TemplateComponent = ComponentType<TemplateProps>;
 
 const TEMPLATE_COMPONENTS: Record<string, TemplateComponent> = {
-    "jasa-001": TemplateSatu,
-    "jasa-002": TemplateDua,
+    "jasa-001": TemplateDua,
+    "jasa-002": TemplateLima, // template "Neon" — dark + neon green (referensi scene*.png)
     "jasa-003": TemplateTiga,
     "jasa-004": TemplateEmpat,
+    "jasa-005": TemplateSatu, // eks jasa-001/jasa-002 "Minimalist" lama
     "personal-001": TemplatePersonalSatu,
     "personal-002": TemplatePersonalDua,
     "personal-003": TemplatePersonalTiga,
+    "peternakan-001": TemplateAgriSatu, // "Classic" — hijau tani + kuning panen (ref farm.webp)
+    "peternakan-002": TemplateAgriDua, // "Agri Corporate" — putih korporat + lime (ref cth1.webp)
 };
 
 // Returns the component for a given templateId, falling back to jasa-001.
 export function getTemplateComponent(templateId: string): TemplateComponent {
-    return TEMPLATE_COMPONENTS[templateId] ?? TemplateSatu;
+    return TEMPLATE_COMPONENTS[templateId] ?? TemplateDua;
 }
 
 // Returns the kategori for a given templateId.

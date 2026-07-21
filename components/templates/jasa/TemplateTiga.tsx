@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import type { TemplateData } from "@/types";
+import { useIsMobile } from "@/components/ui/useIsMobile";
 import { EditableText } from "@/components/ui/EditableText";
+import { SlotImage } from "@/components/ui/SlotImage";
 import { useTemplateEditor } from "./useTemplateEditor";
 import { SaveBar, Toast, EditBanner, Lightbox, Stars } from "./TemplateShared";
 import { Phone, MapPin, Clock, ShieldCheck, Check, MessageCircle, Menu, X } from "lucide-react";
@@ -39,6 +41,7 @@ export default function TemplateTiga(props: Props) {
     fotoBisnis = [],
     portofolio = [],
     caraKerja = DEFAULT_CARA_KERJA,
+    imagePositions,
     caraKerjaTitle = "Mudah dan Cepat",
     forceMobile,
     isEditable = false,
@@ -48,16 +51,18 @@ export default function TemplateTiga(props: Props) {
   } = props;
 
   const em = isEditMode;
-  const { s, patch, hasChanges, saving, toast, handleSave } = useTemplateEditor({
+  const { s, patch, setImgPos, hasChanges, saving, toast, handleSave } = useTemplateEditor({
     namaBisnis, hero, about, layanan, caraKerja, caraKerjaTitle,
-    testimonials: testimonialPlaceholder, paketHarga, footer,
+    testimonials: testimonialPlaceholder, paketHarga, footer, imagePositions,
     isEditMode: em, onContentUpdate, websiteId,
   });
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [lightbox, setLightbox] = useState<number | null>(null);
 
-  const isMob = forceMobile === true;
+  // Layout mobile: ikut prop preview kalau ada, kalau tidak ikut lebar viewport asli
+  // (halaman publik /s/[subdomain] tidak mengirim forceMobile).
+  const isMob = useIsMobile(forceMobile);
   const isDesk = forceMobile === false;
 
   const isDark = warna.tema === "dark";
@@ -75,8 +80,11 @@ export default function TemplateTiga(props: Props) {
   const gallery = portofolio || [];
   const plans = paketHarga && paketHarga.length > 0 ? paketHarga : [];
 
+  // Section tanpa isi tidak dirender, link navbar-nya ikut hilang (hero selalu ada).
+  const hasAbout = !!(s.aboutJudul.trim() || s.aboutDeskripsi.trim() || s.aboutKeunggulan.some((k) => k.trim()));
+
   const navItems = [
-    { label: "Tentang", href: "#tentang" },
+    hasAbout && { label: "Tentang", href: "#tentang" },
     s.layanan.length > 0 && { label: "Layanan", href: "#layanan" },
     gallery.length > 0 && { label: "Galeri", href: "#galeri" },
     plans.length > 0 && { label: "Harga", href: "#harga" },
@@ -175,7 +183,9 @@ export default function TemplateTiga(props: Props) {
 
             <div>
               {photos.length > 0 ? (
-                <img src={photos[0]} alt={namaBisnis} className={`w-full object-cover rounded-3xl ${isMob ? "aspect-[4/3]" : "aspect-[4/3]"}`} loading="lazy" />
+                <div className="relative w-full overflow-hidden rounded-3xl aspect-[4/3]">
+                  <SlotImage id="hero" src={photos[0]} alt={namaBisnis} em={em} positions={s.imagePositions} setPos={setImgPos} priority />
+                </div>
               ) : (
                 <div className={`rounded-3xl ${isMob ? "aspect-[4/3]" : "aspect-[4/3]"} flex flex-col items-center justify-center text-center p-8`} style={{ backgroundColor: pcSoft }}>
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ backgroundColor: pc }}>
@@ -191,6 +201,8 @@ export default function TemplateTiga(props: Props) {
       </section>
 
       {/* Tentang / kenapa pilih kami */}
+      {/* Kosong → section hilang (link navbar ikut hilang). */}
+      {hasAbout && (
       <section id="tentang" className={`${surface} border-y ${line}`}>
         <div className={`max-w-6xl mx-auto ${px} ${isMob ? "py-14" : "py-20"}`}>
           <div className={`grid ${isMob ? "grid-cols-1 gap-8" : "grid-cols-2 gap-14 items-center"}`}>
@@ -211,6 +223,7 @@ export default function TemplateTiga(props: Props) {
           </div>
         </div>
       </section>
+      )}
 
       {/* Layanan cards */}
       {s.layanan.length > 0 && (
@@ -283,9 +296,15 @@ export default function TemplateTiga(props: Props) {
             </div>
             <div className={`grid ${isMob ? "grid-cols-2 gap-3" : "grid-cols-3 gap-4"}`}>
               {gallery.map((src, i) => (
-                <button key={i} type="button" onClick={() => setLightbox(i)} className="overflow-hidden rounded-2xl aspect-square cursor-pointer group">
-                  <img src={src} alt={`Hasil ${i + 1}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
-                </button>
+                <div key={i} className="overflow-hidden rounded-2xl aspect-square group">
+                  {em ? (
+                    <SlotImage id={"galeri" + i} src={src} alt={`Hasil ${i + 1}`} em positions={s.imagePositions} setPos={setImgPos} />
+                  ) : (
+                    <button type="button" onClick={() => setLightbox(i)} className="w-full h-full cursor-pointer">
+                      <SlotImage id={"galeri" + i} src={src} alt={`Hasil ${i + 1}`} em={false} positions={s.imagePositions} setPos={setImgPos} />
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           </div>
