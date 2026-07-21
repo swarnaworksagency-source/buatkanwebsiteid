@@ -313,23 +313,9 @@ export default function TemplateAgriSatu(props: Props) {
             </div>
           </div>
 
-          {/* Stats bar */}
-          {stats.length > 0 && (
-            <div className={`${isMob ? "mt-10 pt-8" : "mt-14 pt-10"} border-t border-white/[0.1] grid ${isMob ? "grid-cols-2 gap-y-7" : stats.length === 2 ? "grid-cols-2" : stats.length === 3 ? "grid-cols-3" : "grid-cols-4"}`}>
-              {stats.map((st, i) => (
-                <div key={i} className={`text-center px-2 ${!isMob && i > 0 ? "border-l border-white/[0.1]" : ""}`}>
-                  <EditableText value={st.val} onChange={(v) => setStat(i, "val", v)} isEditMode={em} as="div" className={`font-bold tracking-tight leading-tight ${inkLight} ${isMob ? "text-[30px]" : "text-[clamp(28px,3vw,44px)]"}`} />
-                  <EditableText
-                    value={st.label}
-                    onChange={(v) => { const a = s.aboutKeunggulan.filter((k) => k.includes("|")); a[i] = `${st.val}|${v}`; const rest = s.aboutKeunggulan.filter((k) => !k.includes("|")); patch({ aboutKeunggulan: [...a, ...rest] }); }}
-                    isEditMode={em}
-                    as="p"
-                    className={`${mutedLight} text-[12.5px] leading-snug mt-1.5`}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Stats bar dihapus — statistik sudah tampil di pita kuning (stat 2) & kartu
+              foto Tentang (stat 1); bar ini duplikat dan sempat memunculkan angka kosong
+              saat diedit karena keunggulan dari AI bukan format "nilai|label". */}
         </div>
       </section>
       )}
