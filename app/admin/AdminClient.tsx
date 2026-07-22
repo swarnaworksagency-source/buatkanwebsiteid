@@ -750,7 +750,7 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
                         )}
                     </h2>
                     <p className="mt-1 text-xs text-zinc-500">
-                        Pengguna yang redeem kode <span className="font-mono text-zinc-300">buatkanweb123</span> lewat WhatsApp.
+                        Pengguna yang redeem kode <span className="font-mono text-zinc-300">webinarBW</span> lewat WhatsApp.
                         Klik <span className="text-zinc-300">Log</span> untuk lihat apa yang mereka jadwalkan.
                     </p>
 

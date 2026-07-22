@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   // hapus user (reminders ikut cascade via FK ON DELETE CASCADE).
   const sql = [
     `delete from wabot.messages_log where wa_jid = (select wa_jid from wabot.users where id = '${userId}')`,
-    `update wabot.activation_codes set used_count = greatest(used_count - 1, 0) where code = 'buatkanweb123' and exists (select 1 from wabot.users where id = '${userId}')`,
+    `update wabot.activation_codes set used_count = greatest(used_count - 1, 0) where code = 'webinarBW' and exists (select 1 from wabot.users where id = '${userId}')`,
     `delete from wabot.users where id = '${userId}'`,
   ].join('; ');
 

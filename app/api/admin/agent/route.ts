@@ -16,7 +16,7 @@ export async function GET() {
        from wabot.users u
     ) t), '[]'::json),
     'slot', (select row_to_json(a) from (
-       select used_count, max_uses from wabot.activation_codes where code = 'buatkanweb123'
+       select used_count, max_uses from wabot.activation_codes where code = 'webinarBW'
     ) a)
   )`;
 
