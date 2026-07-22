@@ -13,7 +13,7 @@ const TABS = [
 
 const BG_GLOW = "radial-gradient(ellipse 55% 60% at 75% 50%, color-mix(in srgb, var(--ng-accent, #a3e635) 4%, transparent) 0%, transparent 65%)";
 
-export default function Pengalaman({ fotoBisnis, portofolio, isEditMode, imgPos, setImgPos, pengalaman }: SectionProps) {
+export default function Pengalaman({ fotoBisnis, isEditMode, imgPos, setImgPos, pengalaman }: SectionProps) {
     const [activeTab, setActiveTab] = useState(0);
     // Pakai data user (dari form). Kalau kosong → placeholder biar preview tak hampa.
     const userItems = pengalaman || [];

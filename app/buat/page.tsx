@@ -15,11 +15,11 @@ import { MultiSelectDropdown } from "@/components/ui/MultiSelectDropdown";
 import { IframePreview } from "@/components/ui/IframePreview";
 import {
   Monitor, Smartphone, Loader2, Globe, Pencil,
-  ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Eye, PenLine,
+  ChevronLeft, ChevronRight, ArrowLeft, Eye, PenLine,
   Building2, Phone, AlignLeft, Award, MapPin, Target, Palette,
   Upload, ImagePlus, ExternalLink, Sun, Moon, Check, X, Pipette,
   Plus, Trash2, DollarSign, Camera, ChevronUp, ChevronDown, Star,
-  Mail, AtSign, Hash, Type, Rocket, CheckCircle2, AlertCircle
+  AtSign, Hash, Type, Rocket, CheckCircle2, AlertCircle
 } from "lucide-react";
 
 /* ═══ CONSTANTS ═══ */
@@ -558,7 +558,7 @@ function BuatContent() {
           setDeployStatus('unavailable');
           setDeployError(data.error || 'Subdomain tidak tersedia');
         }
-      } catch (err) {
+      } catch {
         setDeployStatus('error');
         setDeployError('Gagal mengecek subdomain');
       }
@@ -1078,7 +1078,7 @@ function BuatContent() {
           jsonString = jsonMatch[1].trim();
         }
         aiData = JSON.parse(jsonString);
-      } catch (err) {
+      } catch {
         console.error("Parse error on stream data:", streamData);
         throw new Error("Format respons dari AI tidak valid.");
       }
@@ -1374,7 +1374,7 @@ function BuatContent() {
       setTimeout(() => {
         router.push('/dashboard');
       }, 2000);
-    } catch (err: any) {
+    } catch {
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 4000);
     } finally {
