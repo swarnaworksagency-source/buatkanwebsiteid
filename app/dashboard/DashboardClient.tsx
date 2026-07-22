@@ -414,7 +414,7 @@ export default function DashboardClient({
             if (!res.ok) throw new Error(data.error || 'Failed to recreate payment')
             
             window.location.href = data.paymentUrl;
-        } catch (err) {
+        } catch {
             setToast('Gagal memuat pembayaran. Coba lagi.')
         } finally {
             setContinueLoading(null)

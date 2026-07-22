@@ -558,7 +558,7 @@ function BuatContent() {
           setDeployStatus('unavailable');
           setDeployError(data.error || 'Subdomain tidak tersedia');
         }
-      } catch (err) {
+      } catch {
         setDeployStatus('error');
         setDeployError('Gagal mengecek subdomain');
       }
@@ -1078,7 +1078,7 @@ function BuatContent() {
           jsonString = jsonMatch[1].trim();
         }
         aiData = JSON.parse(jsonString);
-      } catch (err) {
+      } catch {
         console.error("Parse error on stream data:", streamData);
         throw new Error("Format respons dari AI tidak valid.");
       }
@@ -1374,7 +1374,7 @@ function BuatContent() {
       setTimeout(() => {
         router.push('/dashboard');
       }, 2000);
-    } catch (err: any) {
+    } catch {
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 4000);
     } finally {
