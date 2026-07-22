@@ -4,8 +4,6 @@ import { useState } from "react";
 import { EditableText } from "@/components/ui/EditableText";
 import { STUDIO, type SectionProps } from "../types";
 
-const TEX_DOT = "radial-gradient(rgba(255,255,255,0.07) 1.4px, transparent 1.4px)";
-const DOT_SIZE = "28px 28px";
 const BG_LAYERS = "radial-gradient(ellipse 70% 60% at 30% 50%, rgba(255,149,0,0.08) 0%, transparent 70%), radial-gradient(ellipse 50% 40% at 78% 55%, rgba(255,59,48,0.06) 0%, transparent 70%), radial-gradient(rgba(255,255,255,0.07) 1.4px, transparent 1.4px)";
 const BG_SIZES = "100% 100%, 100% 100%, 28px 28px";
 
