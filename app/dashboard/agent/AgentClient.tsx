@@ -13,7 +13,7 @@ interface AgentClientProps {
 }
 
 // Nomor WA agent. Sementara pakai nomor ini; boleh diganti kapan saja.
-const AGENT_NUMBER = '6287830225195' // 087830225195 dalam format internasional
+const AGENT_NUMBER = '6282136111625' // 082136111625 dalam format internasional
 const KODE_AKTIVASI = 'webinarBW'
 // Kode aktivasi terbuka untuk publik saat Webinar: 25 Juli 2026, 19.30 WIB (UTC+7).
 const REVEAL_TS = new Date('2026-07-25T19:30:00+07:00').getTime()
