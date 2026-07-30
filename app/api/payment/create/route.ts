@@ -60,8 +60,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Gagal menyimpan subdomain.' }, { status: 500 });
     }
 
-    // Cek apakah user termasuk early adopter
-    const { count, error: countError } = await supabase
+    // Cek apakah user termasuk early adopter.
+    // WAJIB service role: RLS `websites` membatasi user hanya melihat barisnya sendiri,
+    // jadi hitungan lewat sesi user akan selalu ~0 dan semua orang dapat harga early adopter.
+    const { count, error: countError } = await admin
       .from('websites')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'active');

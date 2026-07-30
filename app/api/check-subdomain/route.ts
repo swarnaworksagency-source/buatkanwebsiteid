@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { adminClient } from '@/lib/ip'
 import { validateSubdomain } from '@/lib/subdomain'
 
 // Cek ketersediaan subdomain (UX di wizard). Validasi format/reserved authoritative
 // ada di lib/subdomain (dipakai juga oleh /api/payment/create & /api/website/deploy).
+// Query dijalankan dengan service role, BUKAN sesi user: RLS `websites` hanya
+// mengizinkan user membaca barisnya sendiri, jadi cek "sudah dipakai orang lain"
+// mustahil lewat sesi user. Yang dikembalikan hanya boolean — tidak ada data bocor.
 export async function GET(request: Request) {
     const raw = new URL(request.url).searchParams.get('subdomain')
     if (!raw) {
@@ -16,7 +19,7 @@ export async function GET(request: Request) {
     }
 
     try {
-        const supabase = await createServerSupabaseClient()
+        const supabase = adminClient()
         const { data, error } = await supabase
             .from('websites')
             .select('subdomain')
