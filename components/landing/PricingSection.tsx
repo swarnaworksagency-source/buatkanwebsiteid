@@ -218,7 +218,7 @@ export default function PricingSection() {
             <div className="flex flex-col mb-2">
               <span className="text-slate-500 text-[12px] font-medium mb-0.5">Mulai dari</span>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-extrabold text-[#1e3a5f] tracking-tight">Rp499k</span>
+                <span className="text-4xl font-extrabold text-[#1e3a5f] tracking-tight">Rp249k</span>
               </div>
             </div>
 
