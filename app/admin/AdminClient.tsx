@@ -7,6 +7,7 @@ import {
     Server, HardDrive, MemoryStick, Archive, Boxes,
     MessageSquare, CalendarClock, ChevronDown,
 } from 'lucide-react'
+import { AGENT_ENABLED } from '@/lib/features'
 
 interface AdminUser {
     id: string
@@ -155,14 +156,15 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
                 fetch('/api/admin/users', { cache: 'no-store' }),
                 fetch('/api/admin/stats', { cache: 'no-store' }),
                 fetch('/api/admin/infra', { cache: 'no-store' }),
-                fetch('/api/admin/agent', { cache: 'no-store' }),
+                // Agent nonaktif → jangan query schema wabot sama sekali.
+                AGENT_ENABLED ? fetch('/api/admin/agent', { cache: 'no-store' }) : null,
             ])
             const usersData = await usersRes.json()
             if (!usersRes.ok) throw new Error(usersData.error || 'Gagal memuat user.')
             setUsers(usersData.users)
             if (statsRes.ok) setStats(await statsRes.json())
             if (infraRes.ok) setInfra(await infraRes.json())
-            if (agentRes.ok) {
+            if (agentRes?.ok) {
                 const a = await agentRes.json()
                 setAgentUsers(a.users ?? [])
                 setAgentSlot(a.slot ?? null)
@@ -738,7 +740,8 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
                     </p>
                 </section>
 
-                {/* Agent Jadwal (WA bot) */}
+                {/* Agent Jadwal (WA bot) — hanya tampil kalau fitur Agent aktif */}
+                {AGENT_ENABLED && (
                 <section className="mt-8">
                     <h2 className="text-lg font-semibold flex items-center gap-2 flex-wrap">
                         <MessageSquare className="w-5 h-5 text-emerald-400" /> Agent Jadwal
@@ -873,6 +876,7 @@ export default function AdminClient({ adminEmail }: { adminEmail: string }) {
                         &ldquo;→&rdquo; = pesan masuk dari user, &ldquo;←&rdquo; = balasan bot.
                     </p>
                 </section>
+                )}
             </div>
         </main>
     )

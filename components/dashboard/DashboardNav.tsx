@@ -3,15 +3,19 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutGrid, Bot } from 'lucide-react'
+import { AGENT_ENABLED } from '@/lib/features'
 
 const TABS = [
     { href: '/dashboard', label: 'Website', icon: LayoutGrid },
-    { href: '/dashboard/agent', label: 'Agent', icon: Bot },
+    ...(AGENT_ENABLED ? [{ href: '/dashboard/agent', label: 'Agent', icon: Bot }] : []),
 ]
 
 // Navigasi antar seksi dashboard: Website (existing) + Agent (AI agent WhatsApp).
 export default function DashboardNav() {
     const pathname = usePathname()
+
+    // Satu tab saja (Agent nonaktif) = nav tak ada gunanya, sembunyikan.
+    if (TABS.length < 2) return null
 
     return (
         <nav className="mb-8 sm:mb-10">
