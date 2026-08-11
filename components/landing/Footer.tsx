@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { label: "Cara Kerja", href: "#cara-kerja" },
   { label: "Harga", href: "#harga" },
   { label: "Portofolio", href: "#portofolio" },
+  { label: "FAQ", href: "#faq" },
 ];
 
 export default function Footer() {

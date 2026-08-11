@@ -66,8 +66,11 @@ export default function HeroSection() {
         <div className="flex flex-col items-start">
 
           <div className="text-left max-w-xl lg:max-w-lg">
+            {/* H1 memuat kata kunci target "buatkan web" secara harfiah — ini elemen
+                tunggal paling berbobot di halaman untuk pencarian Google. Panjang
+                teks sengaja dijaga setara versi sebelumnya agar layout tak bergeser. */}
             <h1 className="text-4xl sm:text-6xl lg:text-[4.4rem] font-semibold text-white leading-[1.12] tracking-tight mb-4 sm:mb-6 animate-fade-in-up">
-              Website Profesional
+              Buatkan Web Usahamu
               <br />
               <span className="bg-gradient-to-r from-[#67BAF4] via-[#89cff0] to-[#1E466B] bg-clip-text text-transparent safari-text-gradient">
                 Siap dalam 5 Menit
@@ -78,7 +81,7 @@ export default function HeroSection() {
               className="text-zinc-400/90 text-[15px] sm:text-xl font-light max-w-md leading-relaxed mb-6 sm:mb-10 animate-fade-in-up tracking-wide"
               style={{ animationDelay: "0.15s" }}
             >
-              Website kamu, Jadi hari ini. Isi form 5 menit. Langsung online.
+              Website profesional untuk UMKM, jadi hari ini. Isi form 5 menit. Langsung online.
             </p>
 
             <div

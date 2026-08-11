@@ -11,10 +11,12 @@ const NAV_LINKS = [
   { label: "Cara Kerja", href: "#cara-kerja" },
   { label: "Harga", href: "#harga" },
   { label: "Portofolio", href: "#portofolio" },
+  { label: "FAQ", href: "#faq" },
 ];
 
-const SECTION_IDS = ["beranda", "tentang", "cara-kerja", "harga", "portofolio"];
-const LIGHT_SECTION_IDS = new Set(["tentang", "harga"]);
+const SECTION_IDS = ["beranda", "tentang", "cara-kerja", "harga", "portofolio", "faq"];
+// Section berlatar terang → navbar pakai teks gelap.
+const LIGHT_SECTION_IDS = new Set(["tentang", "harga", "faq"]);
 
 function UserAvatar({ name, email }: { name?: string; email?: string }) {
   const initials = name

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { getTemplateComponent } from '@/lib/templateRegistry'
 import { notFound } from 'next/navigation'
+import { SITE_URL } from '@/lib/seo'
 import type { Metadata } from 'next'
 
 // Disable caching — always fetch fresh data from database
@@ -53,7 +54,7 @@ export default async function SubdomainPage({ params }: SubdomainPageProps) {
                         berakhir. Pemilik website bisa mengaktifkannya kembali lewat dashboard.
                     </p>
                     <a
-                        href="https://www.buatkanweb.id/dashboard"
+                        href={`${SITE_URL}/dashboard`}
                         style={{ display: 'inline-block', background: '#1E466B', color: '#fff', fontSize: '14px', fontWeight: 700, textDecoration: 'none', padding: '12px 28px', borderRadius: '12px' }}
                     >
                         Saya pemiliknya — perpanjang sekarang
@@ -116,7 +117,12 @@ export async function generateMetadata({ params }: SubdomainPageProps): Promise<
     const description = content?.seo?.metaDescription || content?.hero?.subheadline || ''
 
     return {
-        title,
+        // metadataBase per-tenant: root layout menyetelnya ke buatkanweb.id, dan
+        // itu bikin URL relatif di halaman pelanggan resolve ke domain kami.
+        metadataBase: new URL(siteUrl),
+        // `absolute` mematikan title template "%s | BuatkanWeb.id" dari root layout —
+        // website pelanggan tidak boleh membawa nama brand kami di tab & hasil Google.
+        title: { absolute: title },
         description,
         keywords: [
             content?.namaBisnis || website.nama_usaha,

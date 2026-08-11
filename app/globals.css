@@ -210,3 +210,11 @@ input, select, textarea {
   animation: scale-up 0.3s ease-out;
 }
 
+/* ═══ FAQ Accordion (<details>/<summary> native) ═══ */
+
+/* Safari & iOS masih menggambar segitiga bawaan meski `list-style: none`.
+   Butuh selector -webkit khusus ini untuk menghilangkannya. */
+summary::-webkit-details-marker {
+  display: none;
+}
+
