@@ -4,11 +4,16 @@
  * Satu sumber kebenaran untuk URL kanonik. Jangan hardcode "https://buatkanweb.id"
  * di file lain — impor dari sini, supaya ganti domain cukup di satu tempat.
  *
- * Domain kanonik = APEX (tanpa www). Pastikan www.buatkanweb.id di-301 ke apex
- * di level DNS/host, kalau tidak Google akan melihat dua situs identik.
+ * Domain kanonik = WWW, mengikuti kenyataan di produksi: Caddy di VPS sudah
+ * me-301 apex (buatkanweb.id) ke www.buatkanweb.id. Canonical WAJIB menunjuk
+ * URL yang menjawab 200 — kalau diarahkan ke apex, Google mengikuti redirect
+ * dan menemukan canonical yang menunjuk ke halaman yang mengalihkannya pergi.
+ *
+ * Kalau suatu saat arah redirect dibalik (www → apex) di /etc/caddy/Caddyfile,
+ * ubah juga konstanta ini. Keduanya harus searah.
  */
 
-export const SITE_URL = 'https://buatkanweb.id'
+export const SITE_URL = 'https://www.buatkanweb.id'
 
 export const SITE_NAME = 'BuatkanWeb.id'
 
